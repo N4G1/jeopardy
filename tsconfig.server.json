@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": ".",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "allowJs": false,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "outDir": "dist-server",
+    "types": ["node"]
+  },
+  "include": ["server/**/*.ts"]
+}
