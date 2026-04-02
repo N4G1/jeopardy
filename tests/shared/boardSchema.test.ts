@@ -60,4 +60,83 @@ describe("validateBoardDefinition", () => {
       message: "Game title is required.",
     });
   });
+
+  test("rejects a board with the wrong clue count", () => {
+    expect(
+      validateBoardDefinition({
+        ...createValidBoardDefinition(),
+        clues: createValidBoardDefinition().clues.slice(0, 3),
+      }),
+    ).toContainEqual({
+      field: "clues",
+      message: "Board must contain exactly 4 clues.",
+    });
+  });
+
+  test("rejects clues with duplicate board positions", () => {
+    const boardDefinition = createValidBoardDefinition();
+    const secondClue = boardDefinition.clues[1];
+
+    if (secondClue === undefined) {
+      throw new Error("Expected second clue to exist.");
+    }
+
+    boardDefinition.clues[1] = {
+      ...secondClue,
+      rowIndex: 0,
+      columnIndex: 0,
+    };
+
+    expect(validateBoardDefinition(boardDefinition)).toContainEqual({
+      field: "clues[1].position",
+      message: "Each clue position must be unique on the board.",
+    });
+  });
+
+  test("rejects clues outside of the configured board bounds", () => {
+    const boardDefinition = createValidBoardDefinition();
+    const fourthClue = boardDefinition.clues[3];
+
+    if (fourthClue === undefined) {
+      throw new Error("Expected fourth clue to exist.");
+    }
+
+    boardDefinition.clues[3] = {
+      ...fourthClue,
+      rowIndex: 9,
+    };
+
+    expect(validateBoardDefinition(boardDefinition)).toContainEqual({
+      field: "clues[3].position",
+      message: "Clue position must stay within the board bounds.",
+    });
+  });
+
+  test("rejects clues with empty prompt or answer text", () => {
+    const boardDefinition = createValidBoardDefinition();
+    const thirdClue = boardDefinition.clues[2];
+
+    if (thirdClue === undefined) {
+      throw new Error("Expected third clue to exist.");
+    }
+
+    boardDefinition.clues[2] = {
+      ...thirdClue,
+      prompt: " ",
+      response: "",
+    };
+
+    expect(validateBoardDefinition(boardDefinition)).toEqual(
+      expect.arrayContaining([
+        {
+          field: "clues[2].prompt",
+          message: "Clue question text is required.",
+        },
+        {
+          field: "clues[2].response",
+          message: "Clue answer text is required.",
+        },
+      ]),
+    );
+  });
 });

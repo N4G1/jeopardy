@@ -25,8 +25,8 @@ type SessionState = {
   players: SessionPlayer[];
   answeredClueIds: Set<string>;
   createdAtMs: number;
-  hostConnectionId?: string;
-  activeClue?: ActiveClueState;
+  hostConnectionId?: string | undefined;
+  activeClue?: ActiveClueState | undefined;
 };
 
 export type { ActiveClueState, SessionPhase, SessionPlayer, SessionState };

@@ -20,6 +20,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json",
     "lint": "oxlint -D correctness -D suspicious --vitest-plugin src server vite.config.ts vitest.config.ts",
     "format": "oxfmt --write \"**/*.{ts,js,json,md,html,css}\"",
     "format:check": "oxfmt --check \"**/*.{ts,js,json,md,html,css}\"",

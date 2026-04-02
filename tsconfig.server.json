@@ -3,6 +3,10 @@
     "target": "ES2024",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "paths": {
+      "src/*": ["./src/*"],
+      "server/*": ["./server/*"]
+    },
     "rootDir": ".",
     "strict": true,
     "noUncheckedIndexedAccess": true,

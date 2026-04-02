@@ -1,14 +1,19 @@
-import { defineConfig, mergeConfig } from "vitest/config";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { fileURLToPath, URL } from "node:url";
+import { defineConfig } from "vitest/config";
 
-import viteConfig from "./vite.config";
-
-export default mergeConfig(
-  viteConfig,
-  defineConfig({
-    test: {
-      environment: "jsdom",
-      globals: true,
-      include: ["tests/**/*.test.ts"],
+export default defineConfig({
+  plugins: [svelte()],
+  resolve: {
+    alias: {
+      src: fileURLToPath(new URL("./src", import.meta.url)),
+      server: fileURLToPath(new URL("./server", import.meta.url)),
     },
-  }),
-);
+    conditions: ["browser"],
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    include: ["tests/**/*.test.ts"],
+  },
+});

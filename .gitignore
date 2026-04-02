@@ -5,3 +5,5 @@ coverage/
 uploads/
 .worktrees/
 .cursor/
+.husky/_/
+.playwright-mcp/

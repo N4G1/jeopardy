@@ -27,8 +27,38 @@ type BoardValidationIssue = {
   message: string;
 };
 
+function createBoardDefinition({
+  title = "New Jeopardy Game",
+  rowCount = 2,
+  columnCount = 2,
+}: Partial<Pick<BoardDefinition, "title" | "rowCount" | "columnCount">> = {}): BoardDefinition {
+  return {
+    title,
+    rowCount,
+    columnCount,
+    clues: createClues(rowCount, columnCount),
+  };
+}
+
+function resizeBoardDefinition(
+  boardDefinition: BoardDefinition,
+  rowCount: number,
+  columnCount: number,
+): BoardDefinition {
+  const safeRowCount = Math.max(1, rowCount);
+  const safeColumnCount = Math.max(1, columnCount);
+
+  return {
+    ...boardDefinition,
+    rowCount: safeRowCount,
+    columnCount: safeColumnCount,
+    clues: createClues(safeRowCount, safeColumnCount, boardDefinition.clues),
+  };
+}
+
 function validateBoardDefinition(boardDefinition: BoardDefinition): BoardValidationIssue[] {
   const issues: BoardValidationIssue[] = [];
+  const occupiedPositions = new Set<string>();
 
   if (boardDefinition.title.trim().length === 0) {
     issues.push({
@@ -60,8 +90,78 @@ function validateBoardDefinition(boardDefinition: BoardDefinition): BoardValidat
     });
   }
 
+  for (const [clueIndex, clue] of boardDefinition.clues.entries()) {
+    const positionKey = `${clue.rowIndex}:${clue.columnIndex}`;
+    const isWithinBounds =
+      clue.rowIndex >= 0 &&
+      clue.rowIndex < boardDefinition.rowCount &&
+      clue.columnIndex >= 0 &&
+      clue.columnIndex < boardDefinition.columnCount;
+
+    if (!isWithinBounds) {
+      issues.push({
+        field: `clues[${clueIndex}].position`,
+        message: "Clue position must stay within the board bounds.",
+      });
+    }
+
+    if (occupiedPositions.has(positionKey)) {
+      issues.push({
+        field: `clues[${clueIndex}].position`,
+        message: "Each clue position must be unique on the board.",
+      });
+    } else {
+      occupiedPositions.add(positionKey);
+    }
+
+    if (clue.prompt.trim().length === 0) {
+      issues.push({
+        field: `clues[${clueIndex}].prompt`,
+        message: "Clue question text is required.",
+      });
+    }
+
+    if (clue.response.trim().length === 0) {
+      issues.push({
+        field: `clues[${clueIndex}].response`,
+        message: "Clue answer text is required.",
+      });
+    }
+  }
+
   return issues;
 }
 
+function createClues(
+  rowCount: number,
+  columnCount: number,
+  existingClues: BoardClueDefinition[] = [],
+): BoardClueDefinition[] {
+  const existingCluesByPosition = new Map(
+    existingClues.map((clue) => [`${clue.rowIndex}:${clue.columnIndex}`, clue]),
+  );
+
+  const nextClues: BoardClueDefinition[] = [];
+
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      const existingClue = existingCluesByPosition.get(`${rowIndex}:${columnIndex}`);
+
+      nextClues.push(
+        existingClue ?? {
+          id: `clue-${rowIndex}-${columnIndex}`,
+          rowIndex,
+          columnIndex,
+          value: (rowIndex + 1) * 100,
+          prompt: "",
+          response: "",
+        },
+      );
+    }
+  }
+
+  return nextClues;
+}
+
 export type { BoardClueDefinition, BoardDefinition, BoardValidationIssue, ClueMedia };
-export { validateBoardDefinition };
+export { createBoardDefinition, resizeBoardDefinition, validateBoardDefinition };
