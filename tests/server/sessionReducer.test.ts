@@ -67,6 +67,7 @@ describe("sessionReducer", () => {
     const result = joinPlayer(sessionState, {
       playerId: "player-1",
       displayName: "  ",
+      deviceId: "device-1",
       connectionId: "socket-1",
       joinedAtMs: 1,
     });
@@ -89,6 +90,7 @@ describe("sessionReducer", () => {
     const firstJoin = joinPlayer(sessionState, {
       playerId: "player-1",
       displayName: "Alice",
+      deviceId: "device-1",
       connectionId: "socket-1",
       joinedAtMs: 1,
     });
@@ -100,13 +102,83 @@ describe("sessionReducer", () => {
     const secondJoin = joinPlayer(firstJoin.value, {
       playerId: "player-2",
       displayName: "alice",
+      deviceId: "device-2",
       connectionId: "socket-2",
       joinedAtMs: 2,
     });
 
     expect(secondJoin).toEqual({
       ok: false,
-      error: "Player name must be unique.",
+      error: "Player name is already in use.",
+    });
+  });
+
+  test("rejects a second player from the same device", () => {
+    const sessionState = createSessionState({
+      sessionId: "session-1",
+      joinCode: "abc123",
+      board: createBoardDefinition(),
+      createdAtMs: 0,
+      hostConnectionId: "host-1",
+      players: [
+        {
+          id: "player-1",
+          displayName: "Alice",
+          deviceId: "device-1",
+          score: 0,
+          connectionId: "socket-1",
+          isConnected: true,
+          joinedAtMs: 1,
+        },
+      ],
+    });
+
+    const result = joinPlayer(sessionState, {
+      playerId: "player-2",
+      displayName: "Bob",
+      deviceId: "device-1",
+      connectionId: "socket-2",
+      joinedAtMs: 2,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "This device is already linked to another player.",
+    });
+  });
+
+  test("rejects a new player joining after the game starts", () => {
+    const sessionState = createSessionState({
+      sessionId: "session-1",
+      joinCode: "abc123",
+      board: createBoardDefinition(),
+      createdAtMs: 0,
+      hostConnectionId: "host-1",
+      phase: "board",
+      players: [
+        {
+          id: "player-1",
+          displayName: "Alice",
+          deviceId: "device-1",
+          score: 0,
+          connectionId: "socket-1",
+          isConnected: true,
+          joinedAtMs: 1,
+        },
+      ],
+    });
+
+    const result = joinPlayer(sessionState, {
+      playerId: "player-2",
+      displayName: "Bob",
+      deviceId: "device-2",
+      connectionId: "socket-2",
+      joinedAtMs: 2,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "New players cannot join after the game has started.",
     });
   });
 
@@ -169,6 +241,7 @@ describe("sessionReducer", () => {
         {
           id: "player-1",
           displayName: "Alice",
+          deviceId: "device-1",
           score: 0,
           connectionId: "socket-1",
           isConnected: true,
@@ -177,6 +250,7 @@ describe("sessionReducer", () => {
         {
           id: "player-2",
           displayName: "Bob",
+          deviceId: "device-2",
           score: 0,
           connectionId: "socket-2",
           isConnected: true,
@@ -227,6 +301,7 @@ describe("sessionReducer", () => {
         {
           id: "player-1",
           displayName: "Alice",
+          deviceId: "device-1",
           score: 0,
           connectionId: "socket-1",
           isConnected: true,
@@ -235,6 +310,7 @@ describe("sessionReducer", () => {
         {
           id: "player-2",
           displayName: "Bob",
+          deviceId: "device-2",
           score: 0,
           connectionId: "socket-2",
           isConnected: true,
@@ -270,6 +346,7 @@ describe("sessionReducer", () => {
         {
           id: "player-1",
           displayName: "Alice",
+          deviceId: "device-1",
           score: 0,
           connectionId: "socket-1",
           isConnected: true,
@@ -300,6 +377,7 @@ describe("sessionReducer", () => {
         {
           id: "player-1",
           displayName: "Alice",
+          deviceId: "device-1",
           score: 200,
           connectionId: "socket-1",
           isConnected: true,
@@ -308,6 +386,7 @@ describe("sessionReducer", () => {
         {
           id: "player-2",
           displayName: "Bob",
+          deviceId: "device-2",
           score: 0,
           connectionId: "socket-2",
           isConnected: true,
@@ -356,6 +435,7 @@ describe("sessionReducer", () => {
         {
           id: "player-1",
           displayName: "Alice",
+          deviceId: "device-1",
           score: 200,
           connectionId: "socket-1",
           isConnected: true,
@@ -400,6 +480,7 @@ describe("sessionReducer", () => {
         {
           id: "player-1",
           displayName: "Alice",
+          deviceId: "device-1",
           score: 200,
           connectionId: "socket-1",
           isConnected: true,
@@ -444,6 +525,7 @@ describe("sessionReducer", () => {
         {
           id: "player-1",
           displayName: "Alice",
+          deviceId: "device-1",
           score: 200,
           connectionId: "socket-1",
           isConnected: true,
@@ -485,6 +567,7 @@ describe("sessionReducer", () => {
         {
           id: "player-1",
           displayName: "Alice",
+          deviceId: "device-1",
           score: 200,
           connectionId: "socket-1",
           isConnected: true,

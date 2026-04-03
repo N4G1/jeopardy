@@ -5,6 +5,7 @@ type SessionPhase = "lobby" | "board" | "clue-open" | "awaiting-judgment" | "end
 type SessionPlayer = {
   id: string;
   displayName: string;
+  deviceId: string;
   score: number;
   connectionId: string;
   isConnected: boolean;

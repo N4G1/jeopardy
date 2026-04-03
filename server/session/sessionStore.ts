@@ -1,5 +1,7 @@
 import {
+  closeActiveClueNoContest,
   createSessionState,
+  disconnectPlayer,
   joinPlayer,
   judgeActiveClue,
   openClue,
@@ -14,6 +16,7 @@ import type {
   OpenClueInput,
   ReboundActiveClueInput,
   RegisterBuzzInput,
+  DisconnectPlayerInput,
   Result,
 } from "./sessionReducer.js";
 import type { SessionState } from "./sessionTypes.js";
@@ -53,6 +56,14 @@ class SessionStore {
 
   reboundActiveClue(input: ReboundActiveClueInput): Result<SessionState> {
     return this.#apply((sessionState) => reboundActiveClue(sessionState, input));
+  }
+
+  closeActiveClueNoContest(): Result<SessionState> {
+    return this.#apply((sessionState) => closeActiveClueNoContest(sessionState));
+  }
+
+  disconnectPlayer(input: DisconnectPlayerInput): Result<SessionState> {
+    return this.#apply((sessionState) => disconnectPlayer(sessionState, input));
   }
 
   returnToBoard(): Result<SessionState> {

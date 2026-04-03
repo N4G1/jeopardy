@@ -3,7 +3,12 @@
 
   import type { GameSessionView, ScoreboardPlayer, ServerToClientMessage } from "src/realtime/messages";
   import { getSearchParam } from "src/app/navigation";
-  import { createRealtimeClient, getHostingMode, getServerWebSocketUrl } from "src/realtime/client";
+  import {
+    createRealtimeClient,
+    getHostingMode,
+    getOrCreatePlayerDeviceId,
+    getServerWebSocketUrl,
+  } from "src/realtime/client";
   import { getPlayerBuzzState } from "./playerBuzzState";
   import { getPlayerScreenStep, shouldShowPlayerScoreStrip } from "./playerScreenState";
   import ActiveClueScreen from "./ActiveClueScreen.svelte";
@@ -21,6 +26,8 @@
   const playerName = getLocationSearchParam("name");
   const joinCode = getLocationSearchParam("code");
   const hostingMode = getHostingMode(getLocationSearchParam("mode"));
+  const playerDeviceId =
+    typeof window === "undefined" ? "" : getOrCreatePlayerDeviceId(window.localStorage);
   let connectionSetupError = "";
 
   let realtimeClient:
@@ -43,6 +50,7 @@
         realtimeClient?.send({
           type: "player:join",
           displayName: playerName,
+          deviceId: playerDeviceId,
         });
       },
       onClose: () => {

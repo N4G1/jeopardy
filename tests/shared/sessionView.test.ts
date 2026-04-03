@@ -57,6 +57,7 @@ function createSessionState(): SessionState {
       {
         id: "player-1",
         displayName: "Alice",
+        deviceId: "device-1",
         score: 300,
         connectionId: "socket-1",
         isConnected: true,
@@ -65,6 +66,7 @@ function createSessionState(): SessionState {
       {
         id: "player-2",
         displayName: "Bob",
+        deviceId: "device-2",
         score: 0,
         connectionId: "socket-2",
         isConnected: false,

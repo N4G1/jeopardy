@@ -70,10 +70,15 @@ function handleClientMessage(
     }
 
     case "player:join": {
-      const playerId = connectionContext.playerId ?? connectionContext.connectionId;
+      const reconnectingPlayer = sessionStore
+        .getSession()
+        ?.players.find((player) => player.deviceId === message.deviceId);
+      const playerId =
+        reconnectingPlayer?.id ?? connectionContext.playerId ?? connectionContext.connectionId;
       const result = sessionStore.joinPlayer({
         playerId,
         displayName: message.displayName,
+        deviceId: message.deviceId,
         connectionId: connectionContext.connectionId,
         joinedAtMs: nowMs,
       });
@@ -164,6 +169,16 @@ function handleClientMessage(
       return createBroadcastStateResult(connectionContext, result.value);
     }
 
+    case "host:no-contest": {
+      const result = sessionStore.closeActiveClueNoContest();
+
+      if (!result.ok) {
+        return createErrorResult(connectionContext, result.error);
+      }
+
+      return createBroadcastStateResult(connectionContext, result.value);
+    }
+
     case "host:return-to-board": {
       const result = sessionStore.returnToBoard();
 
@@ -230,7 +245,16 @@ function createJeopardyWebSocketServer({
         }
 
         for (const client of websocketServer.clients) {
-          if (client.readyState === client.OPEN) {
+          if (client.readyState !== client.OPEN) {
+            continue;
+          }
+
+          const targetContext = connectionContexts.get(client);
+          const canReceiveBroadcast =
+            targetContext?.role === "host" ||
+            (targetContext?.role === "player" && targetContext.playerId !== undefined);
+
+          if (canReceiveBroadcast) {
             sendJson(client, outgoingMessage.message);
           }
         }
@@ -238,7 +262,31 @@ function createJeopardyWebSocketServer({
     });
 
     socket.on("close", () => {
+      const currentContext = connectionContexts.get(socket);
       connectionContexts.delete(socket);
+
+      if (currentContext?.role !== "player" || currentContext.playerId === undefined) {
+        return;
+      }
+
+      const result = sessionStore.disconnectPlayer({
+        playerId: currentContext.playerId,
+      });
+
+      if (!result.ok) {
+        return;
+      }
+
+      const sessionMessage: ServerToClientMessage = {
+        type: "session:state",
+        session: createSessionStateView(result.value),
+      };
+
+      for (const client of websocketServer.clients) {
+        if (client.readyState === client.OPEN) {
+          sendJson(client, sessionMessage);
+        }
+      }
     });
   });
 

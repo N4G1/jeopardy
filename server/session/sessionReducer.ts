@@ -27,6 +27,7 @@ type CreateSessionStateInput = {
 type JoinPlayerInput = {
   playerId: string;
   displayName: string;
+  deviceId: string;
   connectionId: string;
   joinedAtMs: number;
 };
@@ -46,6 +47,10 @@ type JudgeActiveClueInput = {
 };
 
 type ReboundActiveClueInput = {
+  playerId: string;
+};
+
+type DisconnectPlayerInput = {
   playerId: string;
 };
 
@@ -80,14 +85,77 @@ function joinPlayer(sessionState: SessionState, input: JoinPlayerInput): Result<
     };
   }
 
-  const nameAlreadyExists = sessionState.players.some(
+  const reconnectingPlayer = sessionState.players.find((player) => player.id === input.playerId);
+  const sameDevicePlayer = sessionState.players.find(
+    (player) => player.deviceId === input.deviceId,
+  );
+  const sameNamePlayer = sessionState.players.find(
     (player) => player.displayName.toLocaleLowerCase() === displayName.toLocaleLowerCase(),
   );
 
-  if (nameAlreadyExists) {
+  if (reconnectingPlayer !== undefined) {
+    if (reconnectingPlayer.isConnected) {
+      return {
+        ok: false,
+        error: "This device is already linked to another player.",
+      };
+    }
+
+    if (reconnectingPlayer.deviceId !== input.deviceId) {
+      return {
+        ok: false,
+        error: "Reconnect from the original device.",
+      };
+    }
+
+    if (reconnectingPlayer.displayName.toLocaleLowerCase() !== displayName.toLocaleLowerCase()) {
+      return {
+        ok: false,
+        error: "Reconnect with the same player name.",
+      };
+    }
+
+    return {
+      ok: true,
+      value: {
+        ...sessionState,
+        players: sessionState.players.map((player) => {
+          if (player.id !== input.playerId) {
+            return player;
+          }
+
+          return {
+            ...player,
+            connectionId: input.connectionId,
+            isConnected: true,
+          };
+        }),
+      },
+    };
+  }
+
+  if (sameDevicePlayer !== undefined) {
     return {
       ok: false,
-      error: "Player name must be unique.",
+      error: sameDevicePlayer.isConnected
+        ? "This device is already linked to another player."
+        : "Reconnect with the same player name.",
+    };
+  }
+
+  if (sameNamePlayer !== undefined) {
+    return {
+      ok: false,
+      error: sameNamePlayer.isConnected
+        ? "Player name is already in use."
+        : "Reconnect from the original device.",
+    };
+  }
+
+  if (sessionState.phase !== "lobby") {
+    return {
+      ok: false,
+      error: "New players cannot join after the game has started.",
     };
   }
 
@@ -100,6 +168,7 @@ function joinPlayer(sessionState: SessionState, input: JoinPlayerInput): Result<
         {
           id: input.playerId,
           displayName,
+          deviceId: input.deviceId,
           score: 0,
           connectionId: input.connectionId,
           isConnected: true,
@@ -269,6 +338,72 @@ function reboundActiveClue(
   };
 }
 
+function closeActiveClueNoContest(sessionState: SessionState): Result<SessionState> {
+  if (
+    (sessionState.phase !== "clue-open" && sessionState.phase !== "awaiting-judgment") ||
+    sessionState.activeClue === undefined
+  ) {
+    return {
+      ok: false,
+      error: "An open clue is required before calling no contest.",
+    };
+  }
+
+  const clue = sessionState.board.clues.find(
+    (boardClue) => boardClue.id === sessionState.activeClue?.clueId,
+  );
+
+  if (clue === undefined) {
+    return {
+      ok: false,
+      error: "Clue was not found.",
+    };
+  }
+
+  const answeredClueIds = new Set([...sessionState.answeredClueIds, clue.id]);
+
+  return {
+    ok: true,
+    value: {
+      ...sessionState,
+      phase: getResolvedBoardPhase(sessionState, answeredClueIds),
+      answeredClueIds,
+      activeClue: undefined,
+    },
+  };
+}
+
+function disconnectPlayer(
+  sessionState: SessionState,
+  input: DisconnectPlayerInput,
+): Result<SessionState> {
+  const playerExists = sessionState.players.some((player) => player.id === input.playerId);
+
+  if (!playerExists) {
+    return {
+      ok: false,
+      error: "Player was not found.",
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      ...sessionState,
+      players: sessionState.players.map((player) => {
+        if (player.id !== input.playerId) {
+          return player;
+        }
+
+        return {
+          ...player,
+          isConnected: false,
+        };
+      }),
+    },
+  };
+}
+
 function returnToBoard(sessionState: SessionState): Result<SessionState> {
   if (sessionState.activeClue !== undefined) {
     return {
@@ -344,6 +479,8 @@ export {
   createSessionState,
   joinPlayer,
   judgeActiveClue,
+  closeActiveClueNoContest,
+  disconnectPlayer,
   openClue,
   reboundActiveClue,
   registerBuzz,
@@ -356,5 +493,6 @@ export type {
   OpenClueInput,
   ReboundActiveClueInput,
   RegisterBuzzInput,
+  DisconnectPlayerInput,
   Result,
 };

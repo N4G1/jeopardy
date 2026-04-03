@@ -280,6 +280,12 @@
     });
   }
 
+  function noContest(): void {
+    sendMessage({
+      type: "host:no-contest",
+    });
+  }
+
   function sendMessage(message: object): void {
     if (hostSocket?.readyState !== WebSocket.OPEN) {
       showToast("Server connection is not ready.", "error");
@@ -455,9 +461,13 @@
             <button type="button" onclick={() => judgeAnswer(true)}>Mark correct</button>
             <button type="button" onclick={() => judgeAnswer(false)}>Mark incorrect</button>
             <button type="button" onclick={rebound}>Rebound</button>
+            <button type="button" onclick={noContest}>No contest</button>
           </div>
         {:else}
           <p>Waiting for a player to buzz in.</p>
+          <div class="judge-actions">
+            <button type="button" onclick={noContest}>No contest</button>
+          </div>
         {/if}
       </section>
     </div>

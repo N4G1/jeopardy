@@ -115,6 +115,7 @@ describe("handleClientMessage", () => {
       {
         type: "player:join",
         displayName: "Alice",
+        deviceId: "device-1",
       },
       {
         nowMs: 25,
@@ -214,6 +215,7 @@ describe("handleClientMessage", () => {
       {
         type: "player:join",
         displayName: "Alice",
+        deviceId: "device-1",
       },
       {
         nowMs: 20,
@@ -270,6 +272,7 @@ describe("handleClientMessage", () => {
       {
         type: "player:join",
         displayName: "Alice",
+        deviceId: "device-1",
       },
       {
         nowMs: 20,

@@ -4,10 +4,11 @@ const baseURL = "http://127.0.0.1:5173";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // The realtime server keeps one in-memory game session, so browser projects must not overlap.
+  workers: 1,
   reporter: "html",
   use: {
     baseURL,

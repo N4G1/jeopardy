@@ -1,6 +1,7 @@
 import type { ClientToServerMessage, ServerToClientMessage } from "./messages.js";
 
 type HostingMode = "lan" | "internet";
+const playerDeviceStorageKey = "jeopardy-player-device-id";
 
 type RealtimeClientOptions = {
   url: string;
@@ -64,6 +65,23 @@ function getHostingMode(value: string): HostingMode {
   return value === "internet" ? "internet" : "lan";
 }
 
+function getOrCreatePlayerDeviceId(
+  storage: Pick<Storage, "getItem" | "setItem"> = localStorage,
+): string {
+  const existingDeviceId = storage.getItem(playerDeviceStorageKey);
+
+  if (existingDeviceId !== null && existingDeviceId.trim().length > 0) {
+    return existingDeviceId;
+  }
+
+  const nextDeviceId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `device-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  storage.setItem(playerDeviceStorageKey, nextDeviceId);
+  return nextDeviceId;
+}
+
 function getServerWebSocketUrl({
   mode,
   publicServerUrl,
@@ -94,5 +112,11 @@ function getServerWebSocketUrl({
   return `${protocol}//${resolvedLocation.hostname}:3001`;
 }
 
-export { createRealtimeClient, getHostingMode, getServerWebSocketUrl, RealtimeClient };
+export {
+  createRealtimeClient,
+  getHostingMode,
+  getOrCreatePlayerDeviceId,
+  getServerWebSocketUrl,
+  RealtimeClient,
+};
 export type { HostingMode, RealtimeClientOptions };

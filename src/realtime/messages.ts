@@ -49,6 +49,7 @@ type HostCreateSessionMessage = {
 type PlayerJoinMessage = {
   type: "player:join";
   displayName: string;
+  deviceId: string;
 };
 
 type HostOpenClueMessage = {
@@ -75,6 +76,10 @@ type HostReboundMessage = {
   playerId: string;
 };
 
+type HostNoContestMessage = {
+  type: "host:no-contest";
+};
+
 type ClientToServerMessage =
   | HostCreateSessionMessage
   | PlayerJoinMessage
@@ -82,7 +87,8 @@ type ClientToServerMessage =
   | PlayerBuzzMessage
   | HostJudgeAnswerMessage
   | HostReturnToBoardMessage
-  | HostReboundMessage;
+  | HostReboundMessage
+  | HostNoContestMessage;
 
 type SessionStateMessage = {
   type: "session:state";
@@ -181,6 +187,7 @@ export type {
   GameSessionView,
   HostCreateSessionMessage,
   HostJudgeAnswerMessage,
+  HostNoContestMessage,
   HostOpenClueMessage,
   HostReboundMessage,
   HostReturnToBoardMessage,
