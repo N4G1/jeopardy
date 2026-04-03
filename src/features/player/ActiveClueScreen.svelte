@@ -45,16 +45,43 @@
 
 <section class="clue-screen">
   <h2 class="clue-screen__title">{clue.columnTitle} - ${clue.value}</h2>
-  <p class="clue-screen__prompt">{clue.prompt}</p>
+  <div class="clue-screen__split">
+    <section class="clue-screen__panel">
+      <h3 class="clue-screen__panel-title">Question</h3>
+      <p class="clue-screen__text">{clue.prompt}</p>
+      <div class="clue-screen__media-slot">
+        {#if clue.questionMedia?.kind === "image"}
+          <img
+            alt={clue.questionMedia.altText ?? clue.questionMedia.fileName}
+            class="clue-screen__image"
+            src={clue.questionMedia.url}
+          />
+        {/if}
+      </div>
+    </section>
 
-  <div class="clue-screen__content">
-    {#if clue.media?.kind === "image"}
-      <img
-        alt={clue.media.altText ?? clue.media.fileName}
-        class="clue-screen__image"
-        src={clue.media.url}
-      />
-    {/if}
+    <section class="clue-screen__panel clue-screen__panel--answer">
+      <h3 class="clue-screen__panel-title">Answer</h3>
+      {#if clue.answerRevealed}
+        <div class="clue-screen__answer-content">
+          <p class="clue-screen__text">{clue.response ?? ""}</p>
+          <div class="clue-screen__media-slot">
+            {#if clue.answerMedia?.kind === "image"}
+              <img
+                alt={clue.answerMedia.altText ?? clue.answerMedia.fileName}
+                class="clue-screen__image"
+                src={clue.answerMedia.url}
+              />
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <div aria-hidden="true" class="clue-screen__answer-content hidden-answer">
+          <p class="clue-screen__text"></p>
+          <div class="clue-screen__media-slot"></div>
+        </div>
+      {/if}
+    </section>
   </div>
 
   <button
@@ -89,14 +116,44 @@
     line-height: 1.1;
   }
 
-  .clue-screen__prompt {
-    margin: 0;
-    font-size: var(--gameplay-tile-font-size);
-    line-height: 1.15;
-    text-align: center;
+  .clue-screen__split {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .clue-screen__content {
+  .clue-screen__panel {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 1rem;
+  }
+
+  .clue-screen__panel-title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.15;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .clue-screen__text {
+    margin: 0;
+    min-height: 6rem;
+    font-size: var(--gameplay-tile-font-size);
+    line-height: 1.15;
+  }
+
+  .clue-screen__answer-content {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .hidden-answer {
+    visibility: hidden;
+  }
+
+  .clue-screen__media-slot {
     min-height: 18rem;
     display: flex;
     align-items: center;
@@ -141,5 +198,11 @@
 
   .clue-screen__status {
     margin: 0;
+  }
+
+  @media (max-width: 900px) {
+    .clue-screen__split {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

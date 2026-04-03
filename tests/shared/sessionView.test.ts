@@ -34,6 +34,16 @@ function createBoardDefinition(): BoardDefinition {
         value: 300,
         prompt: "Question three",
         response: "Answer three",
+        questionMedia: {
+          kind: "image",
+          url: "https://example.com/question.png",
+          fileName: "question.png",
+        },
+        answerMedia: {
+          kind: "image",
+          url: "https://example.com/answer.png",
+          fileName: "answer.png",
+        },
       },
       {
         id: "clue-4",
@@ -80,6 +90,7 @@ function createSessionState(): SessionState {
       buzzWinnerPlayerId: "player-1",
       openedAtMs: 10,
       attemptedPlayerIds: ["player-2"],
+      answerRevealed: false,
     },
   };
 }
@@ -116,6 +127,12 @@ describe("createSessionStateView", () => {
         prompt: "Question three",
         value: 300,
         attemptedPlayerIds: ["player-2"],
+        answerRevealed: false,
+        questionMedia: {
+          kind: "image",
+          url: "https://example.com/question.png",
+          fileName: "question.png",
+        },
       },
     });
 
@@ -137,5 +154,26 @@ describe("createSessionStateView", () => {
         },
       ]),
     );
+  });
+
+  test("includes answer content after the host reveals it", () => {
+    const sessionState = createSessionState();
+    sessionState.activeClue = {
+      ...sessionState.activeClue!,
+      answerRevealed: true,
+    };
+
+    const sessionView = createSessionStateView(sessionState);
+
+    expect(sessionView.activeClue).toMatchObject({
+      id: "clue-3",
+      answerRevealed: true,
+      response: "Answer three",
+      answerMedia: {
+        kind: "image",
+        url: "https://example.com/answer.png",
+        fileName: "answer.png",
+      },
+    });
   });
 });

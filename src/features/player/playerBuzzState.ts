@@ -10,6 +10,7 @@ type GetPlayerBuzzStateInput = {
   buzzWinnerPlayerId?: string;
   buzzWinnerDisplayName?: string;
   hasAttempted: boolean;
+  isAnswerRevealed: boolean;
 };
 
 function getPlayerBuzzState(input: GetPlayerBuzzStateInput): PlayerBuzzState {
@@ -19,6 +20,15 @@ function getPlayerBuzzState(input: GetPlayerBuzzStateInput): PlayerBuzzState {
       buttonLabel: "Already answered",
       isSuccessState: false,
       statusMessage: "You already answered this clue. Waiting for another player to buzz in.",
+    };
+  }
+
+  if (input.isAnswerRevealed) {
+    return {
+      canBuzz: false,
+      buttonLabel: "Buzz locked",
+      isSuccessState: false,
+      statusMessage: "The answer has been revealed.",
     };
   }
 

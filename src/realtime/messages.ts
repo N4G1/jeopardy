@@ -24,7 +24,10 @@ type ActiveClueView = {
   prompt: string;
   value: number;
   attemptedPlayerIds: string[];
-  media?: ClueMedia;
+  answerRevealed: boolean;
+  questionMedia?: ClueMedia;
+  response?: string;
+  answerMedia?: ClueMedia;
 };
 
 type GameSessionView = {
@@ -80,6 +83,10 @@ type HostNoContestMessage = {
   type: "host:no-contest";
 };
 
+type HostShowAnswerMessage = {
+  type: "host:show-answer";
+};
+
 type ClientToServerMessage =
   | HostCreateSessionMessage
   | PlayerJoinMessage
@@ -88,7 +95,8 @@ type ClientToServerMessage =
   | HostJudgeAnswerMessage
   | HostReturnToBoardMessage
   | HostReboundMessage
-  | HostNoContestMessage;
+  | HostNoContestMessage
+  | HostShowAnswerMessage;
 
 type SessionStateMessage = {
   type: "session:state";
@@ -124,6 +132,7 @@ type SessionStateSource = {
         clueId: string;
         buzzWinnerPlayerId?: string;
         attemptedPlayerIds: string[];
+        answerRevealed: boolean;
       }
     | undefined;
 };
@@ -164,8 +173,17 @@ function createSessionStateView(sessionState: SessionStateSource): GameSessionVi
             prompt: activeClueDefinition.prompt,
             value: activeClueDefinition.value,
             attemptedPlayerIds: sessionState.activeClue?.attemptedPlayerIds ?? [],
+            answerRevealed: sessionState.activeClue?.answerRevealed ?? false,
             ...(activeClueDefinition.questionMedia !== undefined
-              ? { media: activeClueDefinition.questionMedia }
+              ? { questionMedia: activeClueDefinition.questionMedia }
+              : {}),
+            ...(sessionState.activeClue?.answerRevealed
+              ? {
+                  response: activeClueDefinition.response,
+                  ...(activeClueDefinition.answerMedia !== undefined
+                    ? { answerMedia: activeClueDefinition.answerMedia }
+                    : {}),
+                }
               : {}),
           },
         }
@@ -191,6 +209,7 @@ export type {
   HostOpenClueMessage,
   HostReboundMessage,
   HostReturnToBoardMessage,
+  HostShowAnswerMessage,
   PlayerBuzzMessage,
   PlayerJoinMessage,
   ScoreboardPlayer,

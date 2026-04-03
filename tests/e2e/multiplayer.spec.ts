@@ -112,6 +112,38 @@ async function expectBoardScore(page: Page, displayName: string, score: number):
   );
 }
 
+async function installBuzzAudioSpy(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    class MockAudio {
+      currentTime = 0;
+      preload = "";
+
+      constructor(public src?: string) {}
+
+      play(): Promise<void> {
+        (
+          window as Window & {
+            __buzzPlayCount?: number;
+          }
+        ).__buzzPlayCount =
+          ((window as Window & { __buzzPlayCount?: number }).__buzzPlayCount ?? 0) + 1;
+        return Promise.resolve();
+      }
+    }
+
+    (window as Window & { __buzzPlayCount?: number }).__buzzPlayCount = 0;
+    window.Audio = MockAudio as typeof Audio;
+  });
+}
+
+async function expectBuzzPlayCount(page: Page, expectedCount: number): Promise<void> {
+  await expect
+    .poll(async () =>
+      page.evaluate(() => (window as Window & { __buzzPlayCount?: number }).__buzzPlayCount ?? 0),
+    )
+    .toBe(expectedCount);
+}
+
 test("multiple players race to buzz and only one wins the lock", async ({ browser, context }) => {
   test.setTimeout(60_000);
   const hostPage = await context.newPage();
@@ -147,6 +179,47 @@ test("multiple players race to buzz and only one wins the lock", async ({ browse
     await expect(loserPage.getByRole("button", { name: "Buzz locked" })).toBeDisabled({
       timeout: 10000,
     });
+  } finally {
+    await alicePage.close();
+    await bobPage.close();
+  }
+});
+
+test("accepted buzz sound plays for everyone and plays again after rebound", async ({
+  browser,
+  context,
+}) => {
+  test.setTimeout(60_000);
+  await installBuzzAudioSpy(context);
+  const hostPage = await context.newPage();
+  const joinUrl = await createLobby(hostPage);
+  const aliceContext = await browser.newContext();
+  const bobContext = await browser.newContext();
+  await installBuzzAudioSpy(aliceContext);
+  await installBuzzAudioSpy(bobContext);
+  const alicePage = await joinPlayer(aliceContext, joinUrl, "Alice");
+  const bobPage = await joinPlayer(bobContext, joinUrl, "Bob");
+
+  try {
+    await startGame(hostPage);
+    await openClue(hostPage);
+
+    await alicePage.getByRole("button", { name: "Buzz in" }).click();
+    await waitForHostBuzzWinner(hostPage);
+
+    await expectBuzzPlayCount(hostPage, 1);
+    await expectBuzzPlayCount(alicePage, 1);
+    await expectBuzzPlayCount(bobPage, 1);
+
+    await hostPage.getByRole("button", { name: "Rebound" }).click();
+    await bobPage.getByRole("button", { name: "Buzz in" }).click();
+    await expect(hostPage.locator(".panel__buzzed-player")).toContainText("Bob", {
+      timeout: 10000,
+    });
+
+    await expectBuzzPlayCount(hostPage, 2);
+    await expectBuzzPlayCount(alicePage, 2);
+    await expectBuzzPlayCount(bobPage, 2);
   } finally {
     await alicePage.close();
     await bobPage.close();
@@ -210,6 +283,25 @@ test("mark incorrect closes the clue and deducts points", async ({ context }) =>
 
   await expectBoardScore(hostPage, "Alice", -100);
   await expect(hostPage.locator(".board__cell--answered")).toHaveCount(1);
+});
+
+test("host can reveal the answer and players only see it after reveal", async ({ context }) => {
+  const hostPage = await context.newPage();
+  const joinUrl = await createLobby(hostPage, { rowCount: 1, columnCount: 1 });
+  const alicePage = await joinPlayer(context, joinUrl, "Alice");
+
+  await startGame(hostPage);
+  await openClue(hostPage);
+
+  await expect(hostPage.locator("body")).toContainText("Sample answer 1-1");
+  await expect(alicePage.locator("body")).not.toContainText("Sample answer 1-1");
+
+  await hostPage.getByRole("button", { name: "Show answer" }).click();
+
+  await expect(alicePage.locator("body")).toContainText("Sample answer 1-1", { timeout: 10000 });
+  await expect(alicePage.getByRole("button", { name: "Buzz locked" })).toBeDisabled({
+    timeout: 10000,
+  });
 });
 
 test("no contest closes a clue without changing scores before any buzz", async ({ context }) => {

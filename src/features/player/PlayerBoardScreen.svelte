@@ -16,6 +16,7 @@
   import GameBoard from "../shared/GameBoard.svelte";
   import Scoreboard from "../shared/Scoreboard.svelte";
   import TimedToast from "../shared/TimedToast.svelte";
+  import { createBuzzSoundPlayer } from "../shared/buzzSound";
   import { createTimedToastManager } from "../shared/timedToastManager";
 
   let connectionStatus = $state<"connecting" | "connected" | "disconnected">("connecting");
@@ -33,6 +34,8 @@
   let realtimeClient:
     | ReturnType<typeof createRealtimeClient>
     | undefined;
+  const buzzSoundPlayer =
+    typeof window === "undefined" ? undefined : createBuzzSoundPlayer();
   const toastManager = createTimedToastManager({
     setMessage: (next) => {
       toastMessage = next;
@@ -60,6 +63,11 @@
         toastManager.show(message, "error");
       },
       onMessage: (message: ServerToClientMessage) => {
+        if (message.type === "buzz:accepted") {
+          void buzzSoundPlayer?.play();
+          return;
+        }
+
         if (message.type === "session:state") {
           sessionView = message.session;
           return;
@@ -108,6 +116,7 @@
       buzzWinnerPlayerId: sessionView?.buzzWinnerPlayerId,
       buzzWinnerDisplayName,
       hasAttempted: currentPlayerHasAttempted,
+      isAnswerRevealed: sessionView?.activeClue?.answerRevealed ?? false,
     }),
   );
   const isGameplayStep = $derived(

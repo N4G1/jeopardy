@@ -17,6 +17,7 @@ type ActiveClueState = {
   buzzWinnerPlayerId?: string;
   openedAtMs: number;
   attemptedPlayerIds: string[];
+  answerRevealed: boolean;
 };
 
 type SessionState = {

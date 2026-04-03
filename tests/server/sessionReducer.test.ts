@@ -7,6 +7,7 @@ import {
   judgeActiveClue,
   openClue,
   reboundActiveClue,
+  revealActiveClueAnswer,
   returnToBoard,
   registerBuzz,
 } from "server/session/sessionReducer";
@@ -204,6 +205,38 @@ describe("sessionReducer", () => {
           clueId: "clue-2",
           openedAtMs: 25,
           attemptedPlayerIds: [],
+          answerRevealed: false,
+        },
+      }),
+    });
+  });
+
+  test("reveals the active clue answer", () => {
+    const sessionState = createSessionState({
+      sessionId: "session-1",
+      joinCode: "abc123",
+      board: createBoardDefinition(),
+      createdAtMs: 0,
+      hostConnectionId: "host-1",
+      activeClue: {
+        clueId: "clue-2",
+        openedAtMs: 25,
+        attemptedPlayerIds: [],
+        answerRevealed: false,
+      },
+      phase: "clue-open",
+    });
+
+    const result = revealActiveClueAnswer(sessionState);
+
+    expect(result).toEqual({
+      ok: true,
+      value: expect.objectContaining({
+        activeClue: {
+          clueId: "clue-2",
+          openedAtMs: 25,
+          attemptedPlayerIds: [],
+          answerRevealed: true,
         },
       }),
     });
@@ -261,6 +294,7 @@ describe("sessionReducer", () => {
         clueId: "clue-1",
         openedAtMs: 10,
         attemptedPlayerIds: [],
+        answerRevealed: false,
       },
       phase: "clue-open",
     });
@@ -282,6 +316,7 @@ describe("sessionReducer", () => {
       buzzWinnerPlayerId: "player-2",
       openedAtMs: 10,
       attemptedPlayerIds: [],
+      answerRevealed: false,
     });
     expect(firstBuzz.value.phase).toBe("awaiting-judgment");
     expect(secondBuzz).toEqual({
@@ -321,6 +356,7 @@ describe("sessionReducer", () => {
         clueId: "clue-1",
         openedAtMs: 10,
         attemptedPlayerIds: ["player-1"],
+        answerRevealed: false,
       },
       phase: "clue-open",
     });
@@ -398,6 +434,7 @@ describe("sessionReducer", () => {
         buzzWinnerPlayerId: "player-1",
         openedAtMs: 10,
         attemptedPlayerIds: [],
+        answerRevealed: true,
       },
       phase: "awaiting-judgment",
     });
@@ -414,6 +451,7 @@ describe("sessionReducer", () => {
           clueId: "clue-3",
           openedAtMs: 10,
           attemptedPlayerIds: ["player-1"],
+          answerRevealed: true,
         },
       }),
     });
@@ -447,6 +485,7 @@ describe("sessionReducer", () => {
         buzzWinnerPlayerId: "player-1",
         openedAtMs: 10,
         attemptedPlayerIds: [],
+        answerRevealed: false,
       },
       phase: "awaiting-judgment",
     });
@@ -492,6 +531,7 @@ describe("sessionReducer", () => {
         buzzWinnerPlayerId: "player-1",
         openedAtMs: 10,
         attemptedPlayerIds: [],
+        answerRevealed: false,
       },
       phase: "awaiting-judgment",
     });
@@ -538,6 +578,7 @@ describe("sessionReducer", () => {
         buzzWinnerPlayerId: "player-1",
         openedAtMs: 10,
         attemptedPlayerIds: [],
+        answerRevealed: false,
       },
       phase: "awaiting-judgment",
     });
@@ -580,6 +621,7 @@ describe("sessionReducer", () => {
         buzzWinnerPlayerId: "player-1",
         openedAtMs: 10,
         attemptedPlayerIds: [],
+        answerRevealed: false,
       },
       phase: "awaiting-judgment",
     });

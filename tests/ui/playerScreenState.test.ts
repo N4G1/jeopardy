@@ -61,6 +61,7 @@ describe("getPlayerScreenStep", () => {
             prompt: "Question one",
             value: 100,
             attemptedPlayerIds: [],
+            answerRevealed: false,
           },
         }),
         createPlayer(),

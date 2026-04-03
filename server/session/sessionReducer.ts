@@ -50,6 +50,8 @@ type ReboundActiveClueInput = {
   playerId: string;
 };
 
+type RevealActiveClueAnswerInput = void;
+
 type DisconnectPlayerInput = {
   playerId: string;
 };
@@ -205,6 +207,7 @@ function openClue(sessionState: SessionState, input: OpenClueInput): Result<Sess
         clueId: input.clueId,
         openedAtMs: input.openedAtMs,
         attemptedPlayerIds: [],
+        answerRevealed: false,
       },
     },
   };
@@ -333,6 +336,37 @@ function reboundActiveClue(
         clueId: sessionState.activeClue.clueId,
         openedAtMs: sessionState.activeClue.openedAtMs,
         attemptedPlayerIds,
+        answerRevealed: sessionState.activeClue.answerRevealed,
+      },
+    },
+  };
+}
+
+function revealActiveClueAnswer(sessionState: SessionState): Result<SessionState> {
+  if (
+    (sessionState.phase !== "clue-open" && sessionState.phase !== "awaiting-judgment") ||
+    sessionState.activeClue === undefined
+  ) {
+    return {
+      ok: false,
+      error: "An open clue is required before showing the answer.",
+    };
+  }
+
+  if (sessionState.activeClue.answerRevealed) {
+    return {
+      ok: false,
+      error: "The answer is already visible.",
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      ...sessionState,
+      activeClue: {
+        ...sessionState.activeClue,
+        answerRevealed: true,
       },
     },
   };
@@ -483,6 +517,7 @@ export {
   disconnectPlayer,
   openClue,
   reboundActiveClue,
+  revealActiveClueAnswer,
   registerBuzz,
   returnToBoard,
 };
@@ -492,6 +527,7 @@ export type {
   JudgeActiveClueInput,
   OpenClueInput,
   ReboundActiveClueInput,
+  RevealActiveClueAnswerInput,
   RegisterBuzzInput,
   DisconnectPlayerInput,
   Result,

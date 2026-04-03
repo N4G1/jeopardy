@@ -179,6 +179,16 @@ function handleClientMessage(
       return createBroadcastStateResult(connectionContext, result.value);
     }
 
+    case "host:show-answer": {
+      const result = sessionStore.revealActiveClueAnswer();
+
+      if (!result.ok) {
+        return createErrorResult(connectionContext, result.error);
+      }
+
+      return createBroadcastStateResult(connectionContext, result.value);
+    }
+
     case "host:return-to-board": {
       const result = sessionStore.returnToBoard();
 

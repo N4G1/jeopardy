@@ -13,6 +13,7 @@ describe("ActiveClueScreen", () => {
           prompt: "Who wrote Hamlet?",
           value: 300,
           attemptedPlayerIds: [],
+          answerRevealed: false,
         },
         canBuzz: true,
         onBuzz: vi.fn(),
@@ -35,6 +36,7 @@ describe("ActiveClueScreen", () => {
           prompt: "Who wrote Hamlet?",
           value: 300,
           attemptedPlayerIds: [],
+          answerRevealed: false,
         },
         canBuzz: true,
         onBuzz,
@@ -58,6 +60,7 @@ describe("ActiveClueScreen", () => {
           prompt: "Who wrote Hamlet?",
           value: 300,
           attemptedPlayerIds: [],
+          answerRevealed: false,
         },
         canBuzz: false,
         onBuzz,
@@ -81,6 +84,7 @@ describe("ActiveClueScreen", () => {
           prompt: "Who wrote Hamlet?",
           value: 300,
           attemptedPlayerIds: [],
+          answerRevealed: false,
         },
         canBuzz: false,
         onBuzz: vi.fn(),
@@ -90,5 +94,44 @@ describe("ActiveClueScreen", () => {
     });
 
     expect(screen.getByRole("button", { name: "You buzzed first" })).toBeTruthy();
+  });
+
+  test("keeps the answer panel in place and only reveals the answer content when allowed", async () => {
+    const { rerender, container } = render(ActiveClueScreen, {
+      props: {
+        clue: {
+          id: "clue-1",
+          columnTitle: "Literature",
+          prompt: "Who wrote Hamlet?",
+          value: 300,
+          attemptedPlayerIds: [],
+          answerRevealed: false,
+          response: "Shakespeare",
+        },
+        canBuzz: true,
+        onBuzz: vi.fn(),
+      },
+    });
+
+    expect(container.querySelector(".clue-screen__answer-content")).toBeTruthy();
+    expect(container.querySelector(".hidden-answer")).toBeTruthy();
+    expect(screen.queryByText("Shakespeare")).toBeNull();
+
+    await rerender({
+      clue: {
+        id: "clue-1",
+        columnTitle: "Literature",
+        prompt: "Who wrote Hamlet?",
+        value: 300,
+        attemptedPlayerIds: [],
+        answerRevealed: true,
+        response: "Shakespeare",
+      },
+      canBuzz: true,
+      onBuzz: vi.fn(),
+    });
+
+    expect(container.querySelector(".hidden-answer")).toBeNull();
+    expect(screen.getByText("Shakespeare")).toBeTruthy();
   });
 });

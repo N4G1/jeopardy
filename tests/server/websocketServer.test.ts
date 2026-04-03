@@ -347,4 +347,72 @@ describe("handleClientMessage", () => {
       },
     ]);
   });
+
+  test("show answer reveals the answer in the broadcast session state", () => {
+    const sessionStore = createDefaultSessionStore();
+
+    handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:create-session",
+        board: createBoardDefinition(),
+      },
+      {
+        nowMs: 10,
+        createSessionId: () => "session-1",
+        createJoinCode: () => "abc123",
+      },
+    );
+
+    handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:return-to-board",
+      },
+      {
+        nowMs: 20,
+      },
+    );
+
+    handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:open-clue",
+        clueId: "clue-1",
+      },
+      {
+        nowMs: 25,
+      },
+    );
+
+    const result = handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:show-answer",
+      },
+      {
+        nowMs: 30,
+      },
+    );
+
+    expect(result.outgoingMessages).toEqual([
+      {
+        audience: "all",
+        message: {
+          type: "session:state",
+          session: expect.objectContaining({
+            activeClue: expect.objectContaining({
+              id: "clue-1",
+              answerRevealed: true,
+              response: "Answer one",
+            }),
+          }),
+        },
+      },
+    ]);
+  });
 });

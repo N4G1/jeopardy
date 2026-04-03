@@ -48,6 +48,7 @@ describe("getHostScreenStep", () => {
             prompt: "Question one",
             value: 100,
             attemptedPlayerIds: [],
+            answerRevealed: false,
           },
         }),
       ),

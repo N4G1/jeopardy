@@ -6,6 +6,7 @@ import {
   judgeActiveClue,
   openClue,
   reboundActiveClue,
+  revealActiveClueAnswer,
   registerBuzz,
   returnToBoard,
 } from "./sessionReducer.js";
@@ -56,6 +57,10 @@ class SessionStore {
 
   reboundActiveClue(input: ReboundActiveClueInput): Result<SessionState> {
     return this.#apply((sessionState) => reboundActiveClue(sessionState, input));
+  }
+
+  revealActiveClueAnswer(): Result<SessionState> {
+    return this.#apply((sessionState) => revealActiveClueAnswer(sessionState));
   }
 
   closeActiveClueNoContest(): Result<SessionState> {

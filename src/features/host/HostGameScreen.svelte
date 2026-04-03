@@ -9,6 +9,7 @@
   import {
     createBoardDefinition,
     fillBoardDefinitionWithSampleContent,
+    type BoardClueDefinition,
     type BoardDefinition,
   } from "src/features/setup/boardSchema";
   import {
@@ -33,6 +34,7 @@
   import GameBoard from "src/features/shared/GameBoard.svelte";
   import Scoreboard from "src/features/shared/Scoreboard.svelte";
   import TimedToast from "src/features/shared/TimedToast.svelte";
+  import { createBuzzSoundPlayer } from "src/features/shared/buzzSound";
   import { createTimedToastManager } from "src/features/shared/timedToastManager";
   import { canEnterGameBoard, getHostScreenStep } from "./hostScreenState";
 
@@ -44,6 +46,8 @@
   let isStorageReady = $state(false);
   let savedBoards = $state<SavedBoardSummary[]>([]);
   let hostingMode = $state<HostingMode>("lan");
+  const buzzSoundPlayer =
+    typeof window === "undefined" ? undefined : createBuzzSoundPlayer();
   const toastManager = createTimedToastManager({
     setMessage: (next) => {
       toastMessage = next;
@@ -65,6 +69,13 @@
     }
 
     return sessionView.players.find((player) => player.id === sessionView.buzzWinnerPlayerId)?.displayName;
+  });
+  const activeHostClueDefinition = $derived.by<BoardClueDefinition | undefined>(() => {
+    if (sessionView?.activeClue === undefined) {
+      return undefined;
+    }
+
+    return boardDefinition.clues.find((clue) => clue.id === sessionView.activeClue?.id);
   });
 
   const joinUrl = $derived.by(() => {
@@ -212,6 +223,11 @@
     hostSocket.addEventListener("message", (event) => {
       const message = JSON.parse(event.data) as ServerToClientMessage;
 
+      if (message.type === "buzz:accepted") {
+        void buzzSoundPlayer?.play();
+        return;
+      }
+
       if (message.type === "session:state") {
         sessionView = message.session;
         return;
@@ -283,6 +299,16 @@
   function noContest(): void {
     sendMessage({
       type: "host:no-contest",
+    });
+  }
+
+  function showAnswer(): void {
+    if (sessionView?.activeClue?.answerRevealed) {
+      return;
+    }
+
+    sendMessage({
+      type: "host:show-answer",
     });
   }
 
@@ -441,16 +467,40 @@
         <h2 class="active-clue__title">
           {sessionView.activeClue.columnTitle} - ${sessionView.activeClue.value}
         </h2>
-        <p class="active-clue__prompt">{sessionView.activeClue.prompt}</p>
+        <div class="active-clue__split">
+          <section class="active-clue__panel">
+            <h3 class="active-clue__panel-title">Question</h3>
+            <p class="active-clue__text">{sessionView.activeClue.prompt}</p>
+            <div class="active-clue__media-slot">
+              {#if sessionView.activeClue.questionMedia?.kind === "image"}
+                <img
+                  alt={
+                    sessionView.activeClue.questionMedia.altText ??
+                    sessionView.activeClue.questionMedia.fileName
+                  }
+                  class="active-clue__image"
+                  src={sessionView.activeClue.questionMedia.url}
+                />
+              {/if}
+            </div>
+          </section>
 
-        <div class="active-clue__content">
-          {#if sessionView.activeClue.media?.kind === "image"}
-            <img
-              alt={sessionView.activeClue.media.altText ?? sessionView.activeClue.media.fileName}
-              class="active-clue__image"
-              src={sessionView.activeClue.media.url}
-            />
-          {/if}
+          <section class="active-clue__panel active-clue__panel--answer">
+            <h3 class="active-clue__panel-title">Answer</h3>
+            <p class="active-clue__text">{activeHostClueDefinition?.response ?? ""}</p>
+            <div class="active-clue__media-slot">
+              {#if activeHostClueDefinition?.answerMedia?.kind === "image"}
+                <img
+                  alt={
+                    activeHostClueDefinition.answerMedia.altText ??
+                    activeHostClueDefinition.answerMedia.fileName
+                  }
+                  class="active-clue__image"
+                  src={activeHostClueDefinition.answerMedia.url}
+                />
+              {/if}
+            </div>
+          </section>
         </div>
 
         {#if sessionView.buzzWinnerPlayerId !== undefined}
@@ -458,6 +508,9 @@
             <strong>Buzzed player:</strong> {buzzWinnerDisplayName ?? "Unknown player"}
           </p>
           <div class="judge-actions">
+            <button type="button" disabled={sessionView.activeClue.answerRevealed} onclick={showAnswer}>
+              Show answer
+            </button>
             <button type="button" onclick={() => judgeAnswer(true)}>Mark correct</button>
             <button type="button" onclick={() => judgeAnswer(false)}>Mark incorrect</button>
             <button type="button" onclick={rebound}>Rebound</button>
@@ -466,6 +519,9 @@
         {:else}
           <p>Waiting for a player to buzz in.</p>
           <div class="judge-actions">
+            <button type="button" disabled={sessionView.activeClue.answerRevealed} onclick={showAnswer}>
+              Show answer
+            </button>
             <button type="button" onclick={noContest}>No contest</button>
           </div>
         {/if}
@@ -672,14 +728,35 @@
     line-height: 1.1;
   }
 
-  .active-clue__prompt {
-    margin: 0;
-    font-size: var(--gameplay-tile-font-size);
-    line-height: 1.15;
-    text-align: center;
+  .active-clue__split {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .active-clue__content {
+  .active-clue__panel {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 1rem;
+  }
+
+  .active-clue__panel-title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.15;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .active-clue__text {
+    margin: 0;
+    min-height: 6rem;
+    font-size: var(--gameplay-tile-font-size);
+    line-height: 1.15;
+  }
+
+  .active-clue__media-slot {
     min-height: 18rem;
     display: flex;
     align-items: center;
@@ -690,6 +767,12 @@
     max-width: min(100%, 42rem);
     max-height: 22rem;
     border-radius: 0;
+  }
+
+  @media (max-width: 900px) {
+    .active-clue__split {
+      grid-template-columns: 1fr;
+    }
   }
 
   .screen__actions--inline {

@@ -8,6 +8,7 @@ describe("getPlayerBuzzState", () => {
       getPlayerBuzzState({
         currentPlayerId: "player-1",
         hasAttempted: false,
+        isAnswerRevealed: false,
       }),
     ).toEqual({
       canBuzz: true,
@@ -24,6 +25,7 @@ describe("getPlayerBuzzState", () => {
         buzzWinnerPlayerId: "player-1",
         buzzWinnerDisplayName: "Alice",
         hasAttempted: false,
+        isAnswerRevealed: false,
       }),
     ).toEqual({
       canBuzz: false,
@@ -40,6 +42,7 @@ describe("getPlayerBuzzState", () => {
         buzzWinnerPlayerId: "player-2",
         buzzWinnerDisplayName: "Bob",
         hasAttempted: false,
+        isAnswerRevealed: false,
       }),
     ).toEqual({
       canBuzz: false,
@@ -54,12 +57,28 @@ describe("getPlayerBuzzState", () => {
       getPlayerBuzzState({
         currentPlayerId: "player-1",
         hasAttempted: true,
+        isAnswerRevealed: false,
       }),
     ).toEqual({
       canBuzz: false,
       buttonLabel: "Already answered",
       isSuccessState: false,
       statusMessage: "You already answered this clue. Waiting for another player to buzz in.",
+    });
+  });
+
+  test("locks buzzing after the host reveals the answer", () => {
+    expect(
+      getPlayerBuzzState({
+        currentPlayerId: "player-1",
+        hasAttempted: false,
+        isAnswerRevealed: true,
+      }),
+    ).toEqual({
+      canBuzz: false,
+      buttonLabel: "Buzz locked",
+      isSuccessState: false,
+      statusMessage: "The answer has been revealed.",
     });
   });
 });
