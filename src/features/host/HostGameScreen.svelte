@@ -1,9 +1,26 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
 
   import type { GameSessionView, ServerToClientMessage } from "src/realtime/messages";
   import { buildJoinUrl } from "src/app/navigation";
-  import { createBoardDefinition, type BoardDefinition } from "src/features/setup/boardSchema";
+  import { getServerWebSocketUrl, type HostingMode } from "src/realtime/client";
+  import { exportBoardDefinitionToJson, importBoardDefinitionFromJson } from "src/features/setup/boardFile";
+  import {
+    createBoardDefinition,
+    type BoardDefinition,
+    validateBoardDefinition,
+  } from "src/features/setup/boardSchema";
+  import BoardStoragePanel from "src/features/setup/BoardStoragePanel.svelte";
+  import {
+    clearDraftBoard,
+    deleteSavedBoard,
+    listSavedBoards,
+    loadDraftBoard,
+    loadSavedBoard,
+    saveDraftBoard,
+    saveNamedBoard,
+    type SavedBoardSummary,
+  } from "src/features/setup/boardStorage";
   import { copyTextToClipboard } from "src/features/shared/clipboard";
   import BoardEditor from "src/features/setup/BoardEditor.svelte";
   import EndScreen from "src/features/shared/EndScreen.svelte";
@@ -16,6 +33,11 @@
   let joinLinkCopyMessage = $state("");
   let sessionView = $state<GameSessionView | undefined>(undefined);
   let joinLinkCopyMessageTimeout: ReturnType<typeof setTimeout> | undefined;
+  let boardStorageMessage = $state("");
+  let hasPersistedDraft = $state(false);
+  let isStorageReady = $state(false);
+  let savedBoards = $state<SavedBoardSummary[]>([]);
+  let hostingMode = $state<HostingMode>("lan");
 
   let hostSocket: WebSocket | undefined;
   const hostScreenStep = $derived(getHostScreenStep(sessionView));
@@ -36,11 +58,107 @@
       return "";
     }
 
-    return buildJoinUrl(window.location.origin, sessionView.joinCode);
+    return buildJoinUrl(window.location.origin, sessionView.joinCode, hostingMode);
   });
 
   function updateBoardDefinition(nextBoardDefinition: BoardDefinition): void {
     boardDefinition = nextBoardDefinition;
+  }
+
+  async function saveCurrentBoard(name: string): Promise<void> {
+    const safeName = name.trim();
+
+    if (safeName.length === 0) {
+      errorMessage = "Board name is required before saving.";
+      return;
+    }
+
+    errorMessage = "";
+
+    try {
+      await saveNamedBoard(safeName, boardDefinition);
+      await refreshSavedBoards();
+      boardStorageMessage = "Board saved.";
+    } catch {
+      errorMessage = "Could not save the board.";
+    }
+  }
+
+  async function loadSavedBoardIntoEditor(savedBoardId: string): Promise<void> {
+    try {
+      const savedBoard = await loadSavedBoard(savedBoardId);
+
+      if (savedBoard === undefined) {
+        errorMessage = "Saved board was not found.";
+        return;
+      }
+
+      applyExternalBoardDefinition(savedBoard.boardDefinition);
+      errorMessage = "";
+      boardStorageMessage = `Loaded ${savedBoard.name}.`;
+      hasPersistedDraft = true;
+    } catch {
+      errorMessage = "Could not load the saved board.";
+    }
+  }
+
+  async function deleteSavedBoardFromLibrary(savedBoardId: string): Promise<void> {
+    try {
+      await deleteSavedBoard(savedBoardId);
+      await refreshSavedBoards();
+      errorMessage = "";
+      boardStorageMessage = "Board deleted.";
+    } catch {
+      errorMessage = "Could not delete the saved board.";
+    }
+  }
+
+  async function clearDraft(): Promise<void> {
+    try {
+      await clearDraftBoard();
+      boardDefinition = createBoardDefinition();
+      hasPersistedDraft = false;
+      errorMessage = "";
+      boardStorageMessage = "Draft cleared.";
+    } catch {
+      errorMessage = "Could not clear the draft.";
+    }
+  }
+
+  function exportBoardToJson(): void {
+    try {
+      const fileName = `${boardDefinition.title || "jeopardy-board"}.json`;
+      const json = exportBoardDefinitionToJson(boardDefinition);
+      const blob = new Blob([json], { type: "application/json" });
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = downloadUrl;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(downloadUrl);
+      errorMessage = "";
+      boardStorageMessage = "Board exported.";
+    } catch {
+      errorMessage = "Could not export the board.";
+    }
+  }
+
+  async function importBoardFromJson(fileList: FileList | null): Promise<void> {
+    const file = fileList?.[0];
+
+    if (file === undefined) {
+      return;
+    }
+
+    try {
+      applyExternalBoardDefinition(importBoardDefinitionFromJson(await file.text()));
+      hasPersistedDraft = true;
+      errorMessage = "";
+      boardStorageMessage = `Imported ${file.name}.`;
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : "Could not import the board.";
+    }
   }
 
   function startSession(): void {
@@ -48,7 +166,13 @@
     joinLinkCopyMessage = "";
 
     hostSocket?.close();
-    hostSocket = new WebSocket(getServerWebSocketUrl());
+
+    try {
+      hostSocket = new WebSocket(getServerWebSocketUrl({ mode: hostingMode }));
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : "Could not start the realtime connection.";
+      return;
+    }
 
     hostSocket.addEventListener("open", () => {
       sendMessage({
@@ -142,10 +266,52 @@
     hostSocket.send(JSON.stringify(message));
   }
 
-  function getServerWebSocketUrl(): string {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.hostname}:3001`;
+  function applyExternalBoardDefinition(nextBoardDefinition: BoardDefinition): void {
+    if (validateBoardDefinition(nextBoardDefinition).length > 0) {
+      throw new Error("Board data is invalid.");
+    }
+
+    boardDefinition = nextBoardDefinition;
   }
+
+  async function refreshSavedBoards(): Promise<void> {
+    savedBoards = await listSavedBoards();
+  }
+
+  async function loadInitialBoardState(): Promise<void> {
+    try {
+      const draftBoard = await loadDraftBoard();
+      savedBoards = await listSavedBoards();
+
+      if (draftBoard !== undefined) {
+        boardDefinition = draftBoard;
+        hasPersistedDraft = true;
+        boardStorageMessage = "Draft restored.";
+      }
+    } catch {
+      errorMessage = "Could not access browser board storage.";
+    } finally {
+      isStorageReady = true;
+    }
+  }
+
+  onMount(() => {
+    void loadInitialBoardState();
+  });
+
+  $effect(() => {
+    if (!isStorageReady || hostScreenStep !== "editor") {
+      return;
+    }
+
+    void saveDraftBoard(boardDefinition)
+      .then(() => {
+        hasPersistedDraft = true;
+      })
+      .catch(() => {
+        errorMessage = "Could not autosave the board draft.";
+      });
+  });
 
   onDestroy(() => {
     hostSocket?.close();
@@ -163,6 +329,17 @@
       <div>
         <h1>Host game</h1>
         <p>Create the board, then start the session.</p>
+        <fieldset class="screen__mode-selector">
+          <legend>Hosting mode</legend>
+          <label>
+            <input bind:group={hostingMode} type="radio" value="lan" />
+            <span>LAN</span>
+          </label>
+          <label>
+            <input bind:group={hostingMode} type="radio" value="internet" />
+            <span>Internet</span>
+          </label>
+        </fieldset>
       </div>
 
       <div class="screen__actions">
@@ -170,6 +347,19 @@
       </div>
     </header>
 
+    <BoardStoragePanel
+      hasDraft={hasPersistedDraft}
+      {savedBoards}
+      onClearDraft={clearDraft}
+      onDeleteBoard={deleteSavedBoardFromLibrary}
+      onExportJson={exportBoardToJson}
+      onImportJson={importBoardFromJson}
+      onLoadBoard={loadSavedBoardIntoEditor}
+      onSaveBoard={saveCurrentBoard}
+    />
+    {#if boardStorageMessage.length > 0}
+      <p class="screen__success">{boardStorageMessage}</p>
+    {/if}
     <BoardEditor {boardDefinition} onBoardChange={updateBoardDefinition} />
   {:else if hostScreenStep === "lobby" && sessionView !== undefined}
     <div class="screen__live">
@@ -269,6 +459,22 @@
     align-items: flex-start;
   }
 
+  .screen__mode-selector {
+    margin: 1rem 0 0;
+    border: 1px solid #475569;
+    padding: 0.75rem 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .screen__mode-selector label {
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+  }
+
   .screen__actions {
     display: grid;
     gap: 0.75rem;
@@ -363,6 +569,11 @@
 
   .error {
     color: #fca5a5;
+  }
+
+  .screen__success {
+    margin: 0;
+    color: #86efac;
   }
 
   button {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { buildPlayerPath, getSearchParam } from "src/app/navigation";
+  import { getHostingMode } from "src/realtime/client";
 
   function getJoinCode(): string {
     if (typeof window === "undefined") {
@@ -9,8 +10,17 @@
     return getSearchParam(window.location.search, "code");
   }
 
+  function getHostingModeFromLocation(): "lan" | "internet" {
+    if (typeof window === "undefined") {
+      return "lan";
+    }
+
+    return getHostingMode(getSearchParam(window.location.search, "mode"));
+  }
+
   let displayName = $state("");
   let joinCode = $state(getJoinCode());
+  let hostingMode = $state(getHostingModeFromLocation());
 
   function continueToPlayerScreen(): void {
     const safeDisplayName = displayName.trim();
@@ -19,7 +29,7 @@
       return;
     }
 
-    window.history.pushState({}, "", buildPlayerPath(joinCode, safeDisplayName));
+    window.history.pushState({}, "", buildPlayerPath(joinCode, safeDisplayName, hostingMode));
     window.dispatchEvent(new PopStateEvent("popstate"));
   }
 </script>

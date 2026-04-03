@@ -3,9 +3,9 @@
 
   import type { GameSessionView, ScoreboardPlayer, ServerToClientMessage } from "src/realtime/messages";
   import { getSearchParam } from "src/app/navigation";
-  import { createRealtimeClient } from "src/realtime/client";
-import { getPlayerBuzzState } from "./playerBuzzState";
-import { getPlayerScreenStep, shouldShowPlayerScoreStrip } from "./playerScreenState";
+  import { createRealtimeClient, getHostingMode, getServerWebSocketUrl } from "src/realtime/client";
+  import { getPlayerBuzzState } from "./playerBuzzState";
+  import { getPlayerScreenStep, shouldShowPlayerScoreStrip } from "./playerScreenState";
   import ActiveClueScreen from "./ActiveClueScreen.svelte";
   import EndScreen from "../shared/EndScreen.svelte";
   import GameBoard from "../shared/GameBoard.svelte";
@@ -17,37 +17,50 @@ import { getPlayerScreenStep, shouldShowPlayerScoreStrip } from "./playerScreenS
 
   const playerName = getLocationSearchParam("name");
   const joinCode = getLocationSearchParam("code");
+  const hostingMode = getHostingMode(getLocationSearchParam("mode"));
+  let connectionSetupError = "";
 
-  const realtimeClient = createRealtimeClient({
-    url: getServerWebSocketUrl(),
-    onOpen: () => {
-      connectionStatus = "connected";
-      realtimeClient.send({
-        type: "player:join",
-        displayName: playerName,
-      });
-    },
-    onClose: () => {
-      connectionStatus = "disconnected";
-    },
-    onError: (message) => {
-      errorMessage = message;
-    },
-    onMessage: (message: ServerToClientMessage) => {
-      if (message.type === "session:state") {
-        sessionView = message.session;
-        return;
-      }
+  let realtimeClient:
+    | ReturnType<typeof createRealtimeClient>
+    | undefined;
 
-      if (message.type === "error") {
-        errorMessage = message.message;
-      }
-    },
-  });
+  try {
+    realtimeClient = createRealtimeClient({
+      url: getServerWebSocketUrl({ mode: hostingMode }),
+      onOpen: () => {
+        connectionStatus = "connected";
+        realtimeClient?.send({
+          type: "player:join",
+          displayName: playerName,
+        });
+      },
+      onClose: () => {
+        connectionStatus = "disconnected";
+      },
+      onError: (message) => {
+        errorMessage = message;
+      },
+      onMessage: (message: ServerToClientMessage) => {
+        if (message.type === "session:state") {
+          sessionView = message.session;
+          return;
+        }
 
-  if (typeof window !== "undefined" && playerName.length > 0) {
+        if (message.type === "error") {
+          errorMessage = message.message;
+        }
+      },
+    });
+  } catch (error) {
+    connectionStatus = "disconnected";
+    connectionSetupError =
+      error instanceof Error ? error.message : "Could not start the realtime connection.";
+    errorMessage = connectionSetupError;
+  }
+
+  if (typeof window !== "undefined" && playerName.length > 0 && realtimeClient !== undefined) {
     realtimeClient.connect();
-  } else {
+  } else if (connectionSetupError.length === 0) {
     connectionStatus = "disconnected";
     errorMessage = "A player name is required before joining the live board.";
   }
@@ -84,23 +97,14 @@ import { getPlayerScreenStep, shouldShowPlayerScoreStrip } from "./playerScreenS
   const showPlayerScoreStrip = $derived(shouldShowPlayerScoreStrip(playerScreenStep));
 
   function buzzIn(): void {
-    realtimeClient.send({
+    realtimeClient?.send({
       type: "player:buzz",
     });
   }
 
   onDestroy(() => {
-    realtimeClient.disconnect();
+    realtimeClient?.disconnect();
   });
-
-  function getServerWebSocketUrl(): string {
-    if (typeof window === "undefined") {
-      return "ws://localhost:3001";
-    }
-
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.hostname}:3001`;
-  }
 
   function getLocationSearchParam(key: string): string {
     if (typeof window === "undefined") {

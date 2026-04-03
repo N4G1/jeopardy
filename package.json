@@ -16,14 +16,17 @@
     "dev": "concurrently -k \"npm:dev:client\" \"npm:dev:server\"",
     "dev:client": "vite --host 0.0.0.0",
     "dev:server": "tsx watch server/index.ts",
-    "build": "vite build && tsc -p tsconfig.server.json",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:pages": "vite build --base=/jeopardy/ && tsx ./prepare-pages.ts",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json",
     "lint": "oxlint -D correctness -D suspicious --vitest-plugin src server vite.config.ts vitest.config.ts",
-    "format": "oxfmt --write \"**/*.{ts,js,json,md,html,css}\"",
-    "format:check": "oxfmt --check \"**/*.{ts,js,json,md,html,css}\"",
+    "format": "oxfmt --write \"**/*.{ts,json,md,html,css}\"",
+    "format:check": "oxfmt --check \"**/*.{ts,json,md,html,css}\"",
     "prepare": "husky"
   },
   "dependencies": {
@@ -39,12 +42,16 @@
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",
     "jsdom": "^29.0.1",
+    "lint-staged": "^16.4.0",
     "oxfmt": "^0.43.0",
     "oxlint": "^1.58.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.3",
     "vitest": "^4.1.2"
+  },
+  "lint-staged": {
+    "*.{ts,json,md,html,css}": "oxfmt --write"
   },
   "engines": {
     "node": "24.13.0"

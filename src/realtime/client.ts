@@ -1,5 +1,7 @@
 import type { ClientToServerMessage, ServerToClientMessage } from "./messages.js";
 
+type HostingMode = "lan" | "internet";
+
 type RealtimeClientOptions = {
   url: string;
   onMessage: (message: ServerToClientMessage) => void;
@@ -58,5 +60,39 @@ function createRealtimeClient(options: RealtimeClientOptions): RealtimeClient {
   return new RealtimeClient(options);
 }
 
-export { createRealtimeClient, RealtimeClient };
-export type { RealtimeClientOptions };
+function getHostingMode(value: string): HostingMode {
+  return value === "internet" ? "internet" : "lan";
+}
+
+function getServerWebSocketUrl({
+  mode,
+  publicServerUrl,
+  location,
+}: {
+  mode: HostingMode;
+  publicServerUrl?: string;
+  location?: Pick<Location, "protocol" | "hostname">;
+}): string {
+  if (mode === "internet") {
+    const resolvedPublicServerUrl = publicServerUrl ?? import.meta.env.VITE_PUBLIC_SERVER_URL;
+
+    if (resolvedPublicServerUrl === undefined || resolvedPublicServerUrl.trim().length === 0) {
+      throw new Error("Internet mode is not configured.");
+    }
+
+    const publicUrl = new URL(resolvedPublicServerUrl);
+    publicUrl.protocol = publicUrl.protocol === "https:" ? "wss:" : "ws:";
+    return publicUrl.toString();
+  }
+
+  const resolvedLocation =
+    location ??
+    (typeof window === "undefined"
+      ? { protocol: "http:", hostname: "localhost" }
+      : window.location);
+  const protocol = resolvedLocation.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${resolvedLocation.hostname}:3001`;
+}
+
+export { createRealtimeClient, getHostingMode, getServerWebSocketUrl, RealtimeClient };
+export type { HostingMode, RealtimeClientOptions };

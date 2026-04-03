@@ -4,7 +4,7 @@ import { createJeopardyWebSocketServer } from "./realtime/websocketServer.js";
 import { createDefaultSessionStore } from "./session/sessionStore.js";
 
 const host = "0.0.0.0";
-const port = 3001;
+const port = Number(process.env.PORT ?? "3001");
 
 const server = createServer((request, response) => {
   if (request.url === "/health") {

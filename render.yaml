@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: jeopardy-server
+    env: node
+    plan: free
+    buildCommand: npm ci && npm run build:server
+    startCommand: node dist-server/server/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.13.0
