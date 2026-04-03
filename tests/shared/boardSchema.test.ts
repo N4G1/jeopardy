@@ -1,12 +1,13 @@
 import { describe, expect, test } from "vitest";
 
-import { validateBoardDefinition } from "src/features/setup/boardSchema";
+import { createBoardDefinition, validateBoardDefinition } from "src/features/setup/boardSchema";
 
 function createValidBoardDefinition() {
   return {
     title: "Friday Quiz",
     rowCount: 2,
     columnCount: 2,
+    columnTitles: ["History", "Science"],
     clues: [
       {
         id: "c1",
@@ -45,6 +46,15 @@ function createValidBoardDefinition() {
 }
 
 describe("validateBoardDefinition", () => {
+  test("creates a 5 by 5 board by default", () => {
+    const boardDefinition = createBoardDefinition();
+
+    expect(boardDefinition.rowCount).toBe(5);
+    expect(boardDefinition.columnCount).toBe(5);
+    expect(boardDefinition.columnTitles).toHaveLength(5);
+    expect(boardDefinition.clues).toHaveLength(25);
+  });
+
   test("accepts a complete board definition", () => {
     expect(validateBoardDefinition(createValidBoardDefinition())).toEqual([]);
   });
@@ -58,6 +68,18 @@ describe("validateBoardDefinition", () => {
     ).toContainEqual({
       field: "title",
       message: "Game title is required.",
+    });
+  });
+
+  test("rejects blank column titles", () => {
+    expect(
+      validateBoardDefinition({
+        ...createValidBoardDefinition(),
+        columnTitles: ["History", "   "],
+      }),
+    ).toContainEqual({
+      field: "columnTitles[1]",
+      message: "Each column title is required.",
     });
   });
 

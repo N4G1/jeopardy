@@ -1,6 +1,6 @@
 import type { BoardDefinition } from "../../src/features/setup/boardSchema.js";
 
-type SessionPhase = "lobby" | "board" | "clue-open" | "awaiting-judgment";
+type SessionPhase = "lobby" | "board" | "clue-open" | "awaiting-judgment" | "ended";
 
 type SessionPlayer = {
   id: string;
@@ -15,6 +15,7 @@ type ActiveClueState = {
   clueId: string;
   buzzWinnerPlayerId?: string;
   openedAtMs: number;
+  attemptedPlayerIds: string[];
 };
 
 type SessionState = {

@@ -2,8 +2,12 @@
   import { onDestroy } from "svelte";
 
   import type { GameSessionView, ScoreboardPlayer, ServerToClientMessage } from "src/realtime/messages";
+  import { getSearchParam } from "src/app/navigation";
   import { createRealtimeClient } from "src/realtime/client";
+import { getPlayerBuzzState } from "./playerBuzzState";
+import { getPlayerScreenStep, shouldShowPlayerScoreStrip } from "./playerScreenState";
   import ActiveClueScreen from "./ActiveClueScreen.svelte";
+  import EndScreen from "../shared/EndScreen.svelte";
   import GameBoard from "../shared/GameBoard.svelte";
   import Scoreboard from "../shared/Scoreboard.svelte";
 
@@ -11,8 +15,8 @@
   let errorMessage = $state("");
   let sessionView = $state<GameSessionView | undefined>(undefined);
 
-  const playerName = getHashSearchParam("name");
-  const joinCode = getHashSearchParam("code");
+  const playerName = getLocationSearchParam("name");
+  const joinCode = getLocationSearchParam("code");
 
   const realtimeClient = createRealtimeClient({
     url: getServerWebSocketUrl(),
@@ -51,20 +55,33 @@
   const currentPlayer = $derived.by<ScoreboardPlayer | undefined>(() =>
     sessionView?.players.find((player) => player.displayName === playerName),
   );
+  const playerScreenStep = $derived(getPlayerScreenStep(sessionView, currentPlayer));
+  const currentPlayerHasAttempted = $derived.by(() => {
+    if (sessionView?.activeClue === undefined || currentPlayer === undefined) {
+      return false;
+    }
 
-  const buzzStatusMessage = $derived.by(() => {
+    return sessionView.activeClue.attemptedPlayerIds.includes(currentPlayer.id);
+  });
+  const buzzWinnerDisplayName = $derived.by(() => {
     if (sessionView?.buzzWinnerPlayerId === undefined) {
       return undefined;
     }
 
-    const buzzWinner = sessionView.players.find(
-      (player) => player.id === sessionView.buzzWinnerPlayerId,
-    );
-
-    return buzzWinner === undefined
-      ? "A player buzzed first."
-      : `${buzzWinner.displayName} buzzed first.`;
+    return sessionView.players.find((player) => player.id === sessionView.buzzWinnerPlayerId)?.displayName;
   });
+  const playerBuzzState = $derived.by(() =>
+    getPlayerBuzzState({
+      currentPlayerId: currentPlayer?.id,
+      buzzWinnerPlayerId: sessionView?.buzzWinnerPlayerId,
+      buzzWinnerDisplayName,
+      hasAttempted: currentPlayerHasAttempted,
+    }),
+  );
+  const isGameplayStep = $derived(
+    playerScreenStep === "board" || playerScreenStep === "clue" || playerScreenStep === "end",
+  );
+  const showPlayerScoreStrip = $derived(shouldShowPlayerScoreStrip(playerScreenStep));
 
   function buzzIn(): void {
     realtimeClient.send({
@@ -85,56 +102,82 @@
     return `${protocol}//${window.location.hostname}:3001`;
   }
 
-  function getHashSearchParam(key: string): string {
+  function getLocationSearchParam(key: string): string {
     if (typeof window === "undefined") {
       return "";
     }
 
-    const query = window.location.hash.split("?")[1] ?? "";
-    return new URLSearchParams(query).get(key) ?? "";
+    return getSearchParam(window.location.search, key);
   }
 </script>
 
-<section class="screen">
-  <header class="screen__header">
-    <div>
-      <h1>Player screen</h1>
-      <p>
-        {#if joinCode.length > 0}
-          Joined game code: {joinCode}
-        {:else}
-          Waiting for game details
-        {/if}
-      </p>
-    </div>
-    <span>Status: {connectionStatus}</span>
-  </header>
+<section class:screen--gameplay={isGameplayStep} class="screen">
+  {#if playerScreenStep === "waiting" || playerScreenStep === "lobby"}
+    <header class="screen__header">
+      <div>
+        <h1>Lobby</h1>
+        <p>
+          {#if joinCode.length > 0}
+            Joined game code: {joinCode}
+          {:else}
+            Waiting for game details
+          {/if}
+        </p>
+      </div>
+      <span>Status: {connectionStatus}</span>
+    </header>
+  {/if}
 
   {#if errorMessage.length > 0}
     <p class="error">{errorMessage}</p>
   {/if}
 
-  {#if sessionView === undefined}
+  {#if playerScreenStep === "waiting"}
     <p>Waiting for the host session to start.</p>
+  {:else if playerScreenStep === "lobby" && sessionView !== undefined}
+    <section class="panel">
+      <h2>{sessionView.title}</h2>
+      <p>Waiting for the host to start the game.</p>
+
+      <section class="player-list">
+        <h3>Players joined</h3>
+
+        {#if sessionView.players.length === 0}
+          <p>No players have joined yet.</p>
+        {:else}
+          <ul>
+            {#each sessionView.players as player (player.id)}
+              <li>{player.displayName}</li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
+    </section>
   {:else}
-    {#if sessionView.activeClue === undefined || currentPlayer === undefined}
+    {#if playerScreenStep === "board" && sessionView !== undefined}
       <GameBoard
         title={sessionView.title}
         rowCount={sessionView.rowCount}
         columnCount={sessionView.columnCount}
+        columnTitles={sessionView.columnTitles}
         clues={sessionView.clues}
       />
-    {:else}
+    {:else if sessionView?.activeClue !== undefined && currentPlayer !== undefined}
       <ActiveClueScreen
         clue={sessionView.activeClue}
-        score={currentPlayer.score}
-        canBuzz={sessionView.buzzWinnerPlayerId === undefined}
+        buttonLabel={playerBuzzState.buttonLabel}
+        canBuzz={playerBuzzState.canBuzz}
+        isSuccessState={playerBuzzState.isSuccessState}
         onBuzz={buzzIn}
-        statusMessage={buzzStatusMessage}
+        statusMessage={playerBuzzState.statusMessage}
       />
+    {:else if playerScreenStep === "end" && sessionView !== undefined}
+      <EndScreen players={sessionView.players} title={sessionView.title} />
     {/if}
 
-    <Scoreboard players={sessionView.players} />
+    {#if showPlayerScoreStrip}
+      <Scoreboard players={sessionView.players} variant="strip" />
+    {/if}
   {/if}
 </section>
 
@@ -147,6 +190,14 @@
     gap: 1.5rem;
   }
 
+  .screen--gameplay {
+    max-width: none;
+    min-height: 100vh;
+    padding: 0;
+    gap: 0;
+    align-content: start;
+  }
+
   .screen__header {
     display: flex;
     justify-content: space-between;
@@ -156,5 +207,34 @@
 
   .error {
     color: #fca5a5;
+  }
+
+  .panel {
+    border: 1px solid #475569;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    background: #0f172a;
+    display: grid;
+    gap: 1rem;
+  }
+
+  .player-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .player-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .player-list li {
+    border: 1px solid #374151;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #111827;
   }
 </style>

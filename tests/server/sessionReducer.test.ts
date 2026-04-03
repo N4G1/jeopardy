@@ -6,6 +6,8 @@ import {
   joinPlayer,
   judgeActiveClue,
   openClue,
+  reboundActiveClue,
+  returnToBoard,
   registerBuzz,
 } from "server/session/sessionReducer";
 
@@ -14,6 +16,7 @@ function createBoardDefinition(): BoardDefinition {
     title: "Quiz Night",
     rowCount: 2,
     columnCount: 2,
+    columnTitles: ["History", "Science"],
     clues: [
       {
         id: "clue-1",
@@ -128,6 +131,7 @@ describe("sessionReducer", () => {
         activeClue: {
           clueId: "clue-2",
           openedAtMs: 25,
+          attemptedPlayerIds: [],
         },
       }),
     });
@@ -182,6 +186,7 @@ describe("sessionReducer", () => {
       activeClue: {
         clueId: "clue-1",
         openedAtMs: 10,
+        attemptedPlayerIds: [],
       },
       phase: "clue-open",
     });
@@ -202,12 +207,186 @@ describe("sessionReducer", () => {
       clueId: "clue-1",
       buzzWinnerPlayerId: "player-2",
       openedAtMs: 10,
+      attemptedPlayerIds: [],
     });
     expect(firstBuzz.value.phase).toBe("awaiting-judgment");
     expect(secondBuzz).toEqual({
       ok: false,
       error: "The buzzer is already locked for this clue.",
     });
+  });
+
+  test("rejects a rebound player from buzzing the same clue again", () => {
+    const sessionState = createSessionState({
+      sessionId: "session-1",
+      joinCode: "abc123",
+      board: createBoardDefinition(),
+      createdAtMs: 0,
+      hostConnectionId: "host-1",
+      players: [
+        {
+          id: "player-1",
+          displayName: "Alice",
+          score: 0,
+          connectionId: "socket-1",
+          isConnected: true,
+          joinedAtMs: 1,
+        },
+        {
+          id: "player-2",
+          displayName: "Bob",
+          score: 0,
+          connectionId: "socket-2",
+          isConnected: true,
+          joinedAtMs: 2,
+        },
+      ],
+      activeClue: {
+        clueId: "clue-1",
+        openedAtMs: 10,
+        attemptedPlayerIds: ["player-1"],
+      },
+      phase: "clue-open",
+    });
+
+    const result = registerBuzz(sessionState, {
+      playerId: "player-1",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "This player already attempted the clue.",
+    });
+  });
+
+  test("moves the session from lobby into the board phase", () => {
+    const sessionState = createSessionState({
+      sessionId: "session-1",
+      joinCode: "abc123",
+      board: createBoardDefinition(),
+      createdAtMs: 0,
+      hostConnectionId: "host-1",
+      players: [
+        {
+          id: "player-1",
+          displayName: "Alice",
+          score: 0,
+          connectionId: "socket-1",
+          isConnected: true,
+          joinedAtMs: 1,
+        },
+      ],
+      phase: "lobby",
+    });
+
+    const result = returnToBoard(sessionState);
+
+    expect(result).toEqual({
+      ok: true,
+      value: expect.objectContaining({
+        phase: "board",
+      }),
+    });
+  });
+
+  test("rebound deducts points and reopens the clue for remaining players", () => {
+    const sessionState = createSessionState({
+      sessionId: "session-1",
+      joinCode: "abc123",
+      board: createBoardDefinition(),
+      createdAtMs: 0,
+      hostConnectionId: "host-1",
+      players: [
+        {
+          id: "player-1",
+          displayName: "Alice",
+          score: 200,
+          connectionId: "socket-1",
+          isConnected: true,
+          joinedAtMs: 1,
+        },
+        {
+          id: "player-2",
+          displayName: "Bob",
+          score: 0,
+          connectionId: "socket-2",
+          isConnected: true,
+          joinedAtMs: 2,
+        },
+      ],
+      activeClue: {
+        clueId: "clue-3",
+        buzzWinnerPlayerId: "player-1",
+        openedAtMs: 10,
+        attemptedPlayerIds: [],
+      },
+      phase: "awaiting-judgment",
+    });
+
+    const result = reboundActiveClue(sessionState, {
+      playerId: "player-1",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: expect.objectContaining({
+        phase: "clue-open",
+        activeClue: {
+          clueId: "clue-3",
+          openedAtMs: 10,
+          attemptedPlayerIds: ["player-1"],
+        },
+      }),
+    });
+
+    if (result.ok) {
+      expect(result.value.players[0]?.score).toBe(-100);
+      expect(result.value.answeredClueIds.has("clue-3")).toBe(false);
+    }
+  });
+
+  test("rebound closes the clue when no players remain eligible", () => {
+    const sessionState = createSessionState({
+      sessionId: "session-1",
+      joinCode: "abc123",
+      board: createBoardDefinition(),
+      createdAtMs: 0,
+      hostConnectionId: "host-1",
+      players: [
+        {
+          id: "player-1",
+          displayName: "Alice",
+          score: 200,
+          connectionId: "socket-1",
+          isConnected: true,
+          joinedAtMs: 1,
+        },
+      ],
+      activeClue: {
+        clueId: "clue-3",
+        buzzWinnerPlayerId: "player-1",
+        openedAtMs: 10,
+        attemptedPlayerIds: [],
+      },
+      phase: "awaiting-judgment",
+    });
+
+    const result = reboundActiveClue(sessionState, {
+      playerId: "player-1",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: expect.objectContaining({
+        phase: "board",
+        activeClue: undefined,
+      }),
+    });
+
+    if (result.ok) {
+      expect(result.value.players[0]?.score).toBe(-100);
+      expect(result.value.answeredClueIds.has("clue-3")).toBe(true);
+    }
   });
 
   test("judges the active clue, updates score, and marks the clue answered", () => {
@@ -231,6 +410,7 @@ describe("sessionReducer", () => {
         clueId: "clue-3",
         buzzWinnerPlayerId: "player-1",
         openedAtMs: 10,
+        attemptedPlayerIds: [],
       },
       phase: "awaiting-judgment",
     });
@@ -251,5 +431,86 @@ describe("sessionReducer", () => {
       expect(result.value.players[0]?.score).toBe(-100);
       expect(result.value.answeredClueIds.has("clue-3")).toBe(true);
     }
+  });
+
+  test("ends the game when the last remaining clue is judged", () => {
+    const sessionState = createSessionState({
+      sessionId: "session-1",
+      joinCode: "abc123",
+      board: createBoardDefinition(),
+      createdAtMs: 0,
+      hostConnectionId: "host-1",
+      players: [
+        {
+          id: "player-1",
+          displayName: "Alice",
+          score: 200,
+          connectionId: "socket-1",
+          isConnected: true,
+          joinedAtMs: 1,
+        },
+      ],
+      answeredClueIds: new Set(["clue-1", "clue-2", "clue-3"]),
+      activeClue: {
+        clueId: "clue-4",
+        buzzWinnerPlayerId: "player-1",
+        openedAtMs: 10,
+        attemptedPlayerIds: [],
+      },
+      phase: "awaiting-judgment",
+    });
+
+    const result = judgeActiveClue(sessionState, {
+      playerId: "player-1",
+      wasCorrect: true,
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: expect.objectContaining({
+        phase: "ended",
+        activeClue: undefined,
+      }),
+    });
+  });
+
+  test("ends the game when the final clue closes on rebound", () => {
+    const sessionState = createSessionState({
+      sessionId: "session-1",
+      joinCode: "abc123",
+      board: createBoardDefinition(),
+      createdAtMs: 0,
+      hostConnectionId: "host-1",
+      players: [
+        {
+          id: "player-1",
+          displayName: "Alice",
+          score: 200,
+          connectionId: "socket-1",
+          isConnected: true,
+          joinedAtMs: 1,
+        },
+      ],
+      answeredClueIds: new Set(["clue-1", "clue-2", "clue-3"]),
+      activeClue: {
+        clueId: "clue-4",
+        buzzWinnerPlayerId: "player-1",
+        openedAtMs: 10,
+        attemptedPlayerIds: [],
+      },
+      phase: "awaiting-judgment",
+    });
+
+    const result = reboundActiveClue(sessionState, {
+      playerId: "player-1",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: expect.objectContaining({
+        phase: "ended",
+        activeClue: undefined,
+      }),
+    });
   });
 });

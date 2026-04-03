@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     createBoardDefinition,
+    fillBoardDefinitionWithSampleContent,
     resizeBoardDefinition,
     type BoardDefinition,
   } from "./boardSchema";
@@ -9,11 +10,13 @@
   type Props = {
     boardDefinition?: BoardDefinition;
     onBoardChange?: (boardDefinition: BoardDefinition) => void;
+    showDevAutofill?: boolean;
   };
 
   let {
     boardDefinition = createBoardDefinition(),
     onBoardChange = () => {},
+    showDevAutofill = import.meta.env.DEV,
   }: Props = $props();
 
   let editableBoardDefinition = $state(createBoardDefinition());
@@ -37,6 +40,21 @@
       nextRowCount,
       nextColumnCount,
     );
+    onBoardChange(editableBoardDefinition);
+  }
+
+  function updateColumnTitle(columnIndex: number, title: string): void {
+    editableBoardDefinition = {
+      ...editableBoardDefinition,
+      columnTitles: editableBoardDefinition.columnTitles.map((columnTitle, index) =>
+        index === columnIndex ? title : columnTitle,
+      ),
+    };
+    onBoardChange(editableBoardDefinition);
+  }
+
+  function fillSampleBoard(): void {
+    editableBoardDefinition = fillBoardDefinitionWithSampleContent(editableBoardDefinition);
     onBoardChange(editableBoardDefinition);
   }
 
@@ -137,6 +155,26 @@
     </label>
   </div>
 
+  <div class="editor__settings">
+    {#each editableBoardDefinition.columnTitles as columnTitle, columnIndex}
+      <label>
+        <span>Column title {columnIndex + 1}</span>
+        <input
+          type="text"
+          value={columnTitle}
+          oninput={(event) =>
+            updateColumnTitle(columnIndex, (event.currentTarget as HTMLInputElement).value)}
+        />
+      </label>
+    {/each}
+  </div>
+
+  {#if showDevAutofill}
+    <div class="editor__actions">
+      <button type="button" onclick={fillSampleBoard}>Fill sample board</button>
+    </div>
+  {/if}
+
   <div class="editor__clues">
     {#each editableBoardDefinition.clues as clue, clueIndex (clue.id)}
       <fieldset class="editor__clue">
@@ -205,7 +243,21 @@
     grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   }
 
-  .editor__settings label,
+  .editor__actions {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .editor__settings label {
+    display: grid;
+    gap: 0.35rem;
+    border: 1px solid #475569;
+    border-radius: 0.85rem;
+    background: #0f172a;
+    padding: 0.9rem 1rem;
+    box-shadow: 0 10px 24px rgb(15 23 42 / 0.18);
+  }
+
   .editor__clue label {
     display: grid;
     gap: 0.35rem;
@@ -228,11 +280,19 @@
   }
 
   .editor__clue {
-    border: 1px solid #374151;
-    border-radius: 0.75rem;
+    border: 1px solid #64748b;
+    border-radius: 0.9rem;
     padding: 1rem;
     display: grid;
     gap: 0.75rem;
+    background: #0f172a;
+    box-shadow: 0 10px 24px rgb(15 23 42 / 0.22);
+  }
+
+  legend {
+    padding: 0 0.35rem;
+    color: #bfdbfe;
+    font-weight: 600;
   }
 
   input,
@@ -240,10 +300,26 @@
     width: 100%;
     box-sizing: border-box;
     border-radius: 0.5rem;
-    border: 1px solid #4b5563;
-    background: #111827;
+    border: 1px solid #94a3b8;
+    background: #020617;
     color: inherit;
     padding: 0.625rem 0.75rem;
+  }
+
+  button {
+    border: 1px solid #60a5fa;
+    background: #0f172a;
+    color: #bfdbfe;
+    padding: 0.65rem 0.95rem;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  input:focus,
+  textarea:focus {
+    outline: 2px solid #60a5fa;
+    outline-offset: 1px;
+    border-color: #60a5fa;
   }
 
   textarea {

@@ -5,7 +5,7 @@ import type {
 } from "../features/setup/boardSchema.js";
 
 type ConnectionStatus = "connected" | "disconnected";
-type SessionPhase = "lobby" | "board" | "clue-open" | "awaiting-judgment";
+type SessionPhase = "lobby" | "board" | "clue-open" | "awaiting-judgment" | "ended";
 
 type ScoreboardPlayer = {
   id: string;
@@ -20,8 +20,10 @@ type BoardClueView = Pick<BoardClueDefinition, "id" | "rowIndex" | "columnIndex"
 
 type ActiveClueView = {
   id: string;
+  columnTitle: string;
   prompt: string;
   value: number;
+  attemptedPlayerIds: string[];
   media?: ClueMedia;
 };
 
@@ -31,6 +33,7 @@ type GameSessionView = {
   title: string;
   rowCount: number;
   columnCount: number;
+  columnTitles: string[];
   phase: SessionPhase;
   players: ScoreboardPlayer[];
   clues: BoardClueView[];
@@ -67,13 +70,19 @@ type HostReturnToBoardMessage = {
   type: "host:return-to-board";
 };
 
+type HostReboundMessage = {
+  type: "host:rebound";
+  playerId: string;
+};
+
 type ClientToServerMessage =
   | HostCreateSessionMessage
   | PlayerJoinMessage
   | HostOpenClueMessage
   | PlayerBuzzMessage
   | HostJudgeAnswerMessage
-  | HostReturnToBoardMessage;
+  | HostReturnToBoardMessage
+  | HostReboundMessage;
 
 type SessionStateMessage = {
   type: "session:state";
@@ -108,6 +117,7 @@ type SessionStateSource = {
     | {
         clueId: string;
         buzzWinnerPlayerId?: string;
+        attemptedPlayerIds: string[];
       }
     | undefined;
 };
@@ -123,6 +133,7 @@ function createSessionStateView(sessionState: SessionStateSource): GameSessionVi
     title: sessionState.board.title,
     rowCount: sessionState.board.rowCount,
     columnCount: sessionState.board.columnCount,
+    columnTitles: sessionState.board.columnTitles,
     phase: sessionState.phase,
     players: sessionState.players.map((player) => ({
       id: player.id,
@@ -141,8 +152,12 @@ function createSessionStateView(sessionState: SessionStateSource): GameSessionVi
       ? {
           activeClue: {
             id: activeClueDefinition.id,
+            columnTitle:
+              sessionState.board.columnTitles[activeClueDefinition.columnIndex] ??
+              `Column ${activeClueDefinition.columnIndex + 1}`,
             prompt: activeClueDefinition.prompt,
             value: activeClueDefinition.value,
+            attemptedPlayerIds: sessionState.activeClue?.attemptedPlayerIds ?? [],
             ...(activeClueDefinition.media !== undefined
               ? { media: activeClueDefinition.media }
               : {}),
@@ -167,6 +182,7 @@ export type {
   HostCreateSessionMessage,
   HostJudgeAnswerMessage,
   HostOpenClueMessage,
+  HostReboundMessage,
   HostReturnToBoardMessage,
   PlayerBuzzMessage,
   PlayerJoinMessage,

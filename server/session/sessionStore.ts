@@ -3,13 +3,16 @@ import {
   joinPlayer,
   judgeActiveClue,
   openClue,
+  reboundActiveClue,
   registerBuzz,
+  returnToBoard,
 } from "./sessionReducer.js";
 import type {
   CreateSessionStateInput,
   JoinPlayerInput,
   JudgeActiveClueInput,
   OpenClueInput,
+  ReboundActiveClueInput,
   RegisterBuzzInput,
   Result,
 } from "./sessionReducer.js";
@@ -46,6 +49,14 @@ class SessionStore {
 
   judgeActiveClue(input: JudgeActiveClueInput): Result<SessionState> {
     return this.#apply((sessionState) => judgeActiveClue(sessionState, input));
+  }
+
+  reboundActiveClue(input: ReboundActiveClueInput): Result<SessionState> {
+    return this.#apply((sessionState) => reboundActiveClue(sessionState, input));
+  }
+
+  returnToBoard(): Result<SessionState> {
+    return this.#apply((sessionState) => returnToBoard(sessionState));
   }
 
   #apply(operation: (sessionState: SessionState) => Result<SessionState>): Result<SessionState> {

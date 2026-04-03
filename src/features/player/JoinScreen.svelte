@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { buildPlayerPath, getSearchParam } from "src/app/navigation";
+
   function getJoinCode(): string {
     if (typeof window === "undefined") {
       return "";
     }
 
-    const query = window.location.hash.split("?")[1] ?? "";
-    return new URLSearchParams(query).get("code") ?? "";
+    return getSearchParam(window.location.search, "code");
   }
 
   let displayName = $state("");
@@ -18,18 +19,14 @@
       return;
     }
 
-    const query = new URLSearchParams({
-      code: joinCode,
-      name: safeDisplayName,
-    });
-
-    window.location.hash = `/player?${query.toString()}`;
+    window.history.pushState({}, "", buildPlayerPath(joinCode, safeDisplayName));
+    window.dispatchEvent(new PopStateEvent("popstate"));
   }
 </script>
 
 <section class="screen">
   <h1>Join game</h1>
-  <p>Enter your display name and continue to the live player screen.</p>
+  <p>Enter your display name and continue to the lobby.</p>
 
   <label>
     <span>Join code</span>
@@ -41,7 +38,7 @@
     <input type="text" bind:value={displayName} />
   </label>
 
-  <button type="button" onclick={continueToPlayerScreen}>Join</button>
+  <button type="button" onclick={continueToPlayerScreen}>Join Lobby</button>
 </section>
 
 <style>

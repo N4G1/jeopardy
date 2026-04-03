@@ -9,6 +9,7 @@ function createBoardDefinition(): BoardDefinition {
     title: "Quiz Night",
     rowCount: 2,
     columnCount: 2,
+    columnTitles: ["History", "Science"],
     clues: [
       {
         id: "clue-1",
@@ -76,6 +77,7 @@ function createSessionState(): SessionState {
       clueId: "clue-3",
       buzzWinnerPlayerId: "player-1",
       openedAtMs: 10,
+      attemptedPlayerIds: ["player-2"],
     },
   };
 }
@@ -108,8 +110,10 @@ describe("createSessionStateView", () => {
       ],
       activeClue: {
         id: "clue-3",
+        columnTitle: "History",
         prompt: "Question three",
         value: 300,
+        attemptedPlayerIds: ["player-2"],
       },
     });
 

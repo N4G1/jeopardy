@@ -45,6 +45,17 @@ type JudgeActiveClueInput = {
   wasCorrect: boolean;
 };
 
+type ReboundActiveClueInput = {
+  playerId: string;
+};
+
+function getResolvedBoardPhase(
+  sessionState: SessionState,
+  answeredClueIds: Set<string>,
+): SessionState["phase"] {
+  return answeredClueIds.size >= sessionState.board.clues.length ? "ended" : "board";
+}
+
 function createSessionState(input: CreateSessionStateInput): SessionState {
   return {
     sessionId: input.sessionId,
@@ -124,6 +135,7 @@ function openClue(sessionState: SessionState, input: OpenClueInput): Result<Sess
       activeClue: {
         clueId: input.clueId,
         openedAtMs: input.openedAtMs,
+        attemptedPlayerIds: [],
       },
     },
   };
@@ -141,6 +153,13 @@ function registerBuzz(sessionState: SessionState, input: RegisterBuzzInput): Res
     return {
       ok: false,
       error: "A clue must be open before players can buzz.",
+    };
+  }
+
+  if (sessionState.activeClue.attemptedPlayerIds.includes(input.playerId)) {
+    return {
+      ok: false,
+      error: "This player already attempted the clue.",
     };
   }
 
@@ -162,6 +181,107 @@ function registerBuzz(sessionState: SessionState, input: RegisterBuzzInput): Res
         ...sessionState.activeClue,
         buzzWinnerPlayerId: input.playerId,
       },
+    },
+  };
+}
+
+function reboundActiveClue(
+  sessionState: SessionState,
+  input: ReboundActiveClueInput,
+): Result<SessionState> {
+  if (sessionState.phase !== "awaiting-judgment" || sessionState.activeClue === undefined) {
+    return {
+      ok: false,
+      error: "A buzzed clue is required before a rebound.",
+    };
+  }
+
+  if (sessionState.activeClue.buzzWinnerPlayerId !== input.playerId) {
+    return {
+      ok: false,
+      error: "Only the current buzzed player can be sent to rebound.",
+    };
+  }
+
+  const clue = sessionState.board.clues.find(
+    (boardClue) => boardClue.id === sessionState.activeClue?.clueId,
+  );
+
+  if (clue === undefined) {
+    return {
+      ok: false,
+      error: "Clue was not found.",
+    };
+  }
+
+  const playerExists = sessionState.players.some((player) => player.id === input.playerId);
+
+  if (!playerExists) {
+    return {
+      ok: false,
+      error: "Player was not found.",
+    };
+  }
+
+  const attemptedPlayerIds = [...sessionState.activeClue.attemptedPlayerIds, input.playerId];
+  const remainingEligiblePlayerExists = sessionState.players.some(
+    (player) => !attemptedPlayerIds.includes(player.id),
+  );
+
+  const players = sessionState.players.map((player) => {
+    if (player.id !== input.playerId) {
+      return player;
+    }
+
+    return {
+      ...player,
+      score: player.score - clue.value,
+    };
+  });
+
+  if (!remainingEligiblePlayerExists) {
+    const answeredClueIds = new Set([...sessionState.answeredClueIds, clue.id]);
+
+    return {
+      ok: true,
+      value: {
+        ...sessionState,
+        phase: getResolvedBoardPhase(sessionState, answeredClueIds),
+        players,
+        answeredClueIds,
+        activeClue: undefined,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      ...sessionState,
+      phase: "clue-open",
+      players,
+      activeClue: {
+        clueId: sessionState.activeClue.clueId,
+        openedAtMs: sessionState.activeClue.openedAtMs,
+        attemptedPlayerIds,
+      },
+    },
+  };
+}
+
+function returnToBoard(sessionState: SessionState): Result<SessionState> {
+  if (sessionState.activeClue !== undefined) {
+    return {
+      ok: false,
+      error: "The active clue must be resolved before returning to the board.",
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      ...sessionState,
+      phase: "board",
     },
   };
 }
@@ -197,11 +317,13 @@ function judgeActiveClue(
     };
   }
 
+  const answeredClueIds = new Set([...sessionState.answeredClueIds, clue.id]);
+
   return {
     ok: true,
     value: {
       ...sessionState,
-      phase: "board",
+      phase: getResolvedBoardPhase(sessionState, answeredClueIds),
       players: sessionState.players.map((player) => {
         if (player.id !== input.playerId) {
           return player;
@@ -212,18 +334,27 @@ function judgeActiveClue(
           score: player.score + (input.wasCorrect ? clue.value : -clue.value),
         };
       }),
-      answeredClueIds: new Set([...sessionState.answeredClueIds, clue.id]),
+      answeredClueIds,
       activeClue: undefined,
     },
   };
 }
 
-export { createSessionState, joinPlayer, judgeActiveClue, openClue, registerBuzz };
+export {
+  createSessionState,
+  joinPlayer,
+  judgeActiveClue,
+  openClue,
+  reboundActiveClue,
+  registerBuzz,
+  returnToBoard,
+};
 export type {
   CreateSessionStateInput,
   JoinPlayerInput,
   JudgeActiveClueInput,
   OpenClueInput,
+  ReboundActiveClueInput,
   RegisterBuzzInput,
   Result,
 };

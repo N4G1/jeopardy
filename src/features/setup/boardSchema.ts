@@ -19,6 +19,7 @@ type BoardDefinition = {
   title: string;
   rowCount: number;
   columnCount: number;
+  columnTitles: string[];
   clues: BoardClueDefinition[];
 };
 
@@ -29,14 +30,29 @@ type BoardValidationIssue = {
 
 function createBoardDefinition({
   title = "New Jeopardy Game",
-  rowCount = 2,
-  columnCount = 2,
+  rowCount = 5,
+  columnCount = 5,
 }: Partial<Pick<BoardDefinition, "title" | "rowCount" | "columnCount">> = {}): BoardDefinition {
   return {
     title,
     rowCount,
     columnCount,
+    columnTitles: createColumnTitles(columnCount),
     clues: createClues(rowCount, columnCount),
+  };
+}
+
+function fillBoardDefinitionWithSampleContent(boardDefinition: BoardDefinition): BoardDefinition {
+  return {
+    ...boardDefinition,
+    columnTitles: boardDefinition.columnTitles.map(
+      (_, columnIndex) => `Category ${columnIndex + 1}`,
+    ),
+    clues: boardDefinition.clues.map((clue) => ({
+      ...clue,
+      prompt: `Sample question ${clue.rowIndex + 1}-${clue.columnIndex + 1}`,
+      response: `Sample answer ${clue.rowIndex + 1}-${clue.columnIndex + 1}`,
+    })),
   };
 }
 
@@ -52,6 +68,7 @@ function resizeBoardDefinition(
     ...boardDefinition,
     rowCount: safeRowCount,
     columnCount: safeColumnCount,
+    columnTitles: createColumnTitles(safeColumnCount, boardDefinition.columnTitles),
     clues: createClues(safeRowCount, safeColumnCount, boardDefinition.clues),
   };
 }
@@ -82,6 +99,22 @@ function validateBoardDefinition(boardDefinition: BoardDefinition): BoardValidat
   }
 
   const expectedClueCount = boardDefinition.rowCount * boardDefinition.columnCount;
+
+  if (boardDefinition.columnTitles.length !== boardDefinition.columnCount) {
+    issues.push({
+      field: "columnTitles",
+      message: `Board must contain exactly ${boardDefinition.columnCount} column titles.`,
+    });
+  }
+
+  for (const [columnIndex, columnTitle] of boardDefinition.columnTitles.entries()) {
+    if (columnTitle.trim().length === 0) {
+      issues.push({
+        field: `columnTitles[${columnIndex}]`,
+        message: "Each column title is required.",
+      });
+    }
+  }
 
   if (boardDefinition.clues.length !== expectedClueCount) {
     issues.push({
@@ -132,6 +165,12 @@ function validateBoardDefinition(boardDefinition: BoardDefinition): BoardValidat
   return issues;
 }
 
+function createColumnTitles(columnCount: number, existingColumnTitles: string[] = []): string[] {
+  return Array.from({ length: columnCount }, (_, columnIndex) => {
+    return existingColumnTitles[columnIndex] ?? `Column ${columnIndex + 1}`;
+  });
+}
+
 function createClues(
   rowCount: number,
   columnCount: number,
@@ -164,4 +203,9 @@ function createClues(
 }
 
 export type { BoardClueDefinition, BoardDefinition, BoardValidationIssue, ClueMedia };
-export { createBoardDefinition, resizeBoardDefinition, validateBoardDefinition };
+export {
+  createBoardDefinition,
+  fillBoardDefinitionWithSampleContent,
+  resizeBoardDefinition,
+  validateBoardDefinition,
+};

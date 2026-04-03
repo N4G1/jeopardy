@@ -1,7 +1,35 @@
 <script lang="ts">
-  import Router from "svelte-spa-router";
+  import { onDestroy } from "svelte";
 
-  import { routes } from "./app/router";
+  import HostGameScreen from "./features/host/HostGameScreen.svelte";
+  import JoinScreen from "./features/player/JoinScreen.svelte";
+  import PlayerBoardScreen from "./features/player/PlayerBoardScreen.svelte";
+  import NotFoundScreen from "./features/shared/NotFoundScreen.svelte";
+  import { resolveRoutePath } from "./app/navigation";
+
+  let currentPath = $state(getCurrentPath());
+
+  function getCurrentPath(): string {
+    if (typeof window === "undefined") {
+      return "/";
+    }
+
+    return resolveRoutePath(window.location.pathname);
+  }
+
+  function syncCurrentPath(): void {
+    currentPath = getCurrentPath();
+  }
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("popstate", syncCurrentPath);
+  }
+
+  onDestroy(() => {
+    if (typeof window !== "undefined") {
+      window.removeEventListener("popstate", syncCurrentPath);
+    }
+  });
 </script>
 
 <svelte:head>
@@ -9,7 +37,15 @@
 </svelte:head>
 
 <main class="app-shell">
-  <Router {routes} />
+  {#if currentPath === "/"}
+    <HostGameScreen />
+  {:else if currentPath === "/join"}
+    <JoinScreen />
+  {:else if currentPath === "/player"}
+    <PlayerBoardScreen />
+  {:else}
+    <NotFoundScreen />
+  {/if}
 </main>
 
 <style>

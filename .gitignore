@@ -7,3 +7,5 @@ uploads/
 .cursor/
 .husky/_/
 .playwright-mcp/
+.superpowers/
+docs/

@@ -4,22 +4,24 @@ import { describe, expect, test, vi } from "vitest";
 import ActiveClueScreen from "src/features/player/ActiveClueScreen.svelte";
 
 describe("ActiveClueScreen", () => {
-  test("shows the clue prompt and current player score", () => {
+  test("shows the clue prompt without a separate score line", () => {
     render(ActiveClueScreen, {
       props: {
         clue: {
           id: "clue-1",
+          columnTitle: "Literature",
           prompt: "Who wrote Hamlet?",
           value: 300,
+          attemptedPlayerIds: [],
         },
-        score: 500,
         canBuzz: true,
         onBuzz: vi.fn(),
       },
     });
 
+    expect(screen.getByText("Literature - $300")).toBeTruthy();
     expect(screen.getByText("Who wrote Hamlet?")).toBeTruthy();
-    expect(screen.getByText("Your score: 500")).toBeTruthy();
+    expect(screen.queryByText("Your score: 500")).toBeNull();
   });
 
   test("buzzes from the button and the spacebar when buzzing is enabled", async () => {
@@ -29,10 +31,11 @@ describe("ActiveClueScreen", () => {
       props: {
         clue: {
           id: "clue-1",
+          columnTitle: "Literature",
           prompt: "Who wrote Hamlet?",
           value: 300,
+          attemptedPlayerIds: [],
         },
-        score: 500,
         canBuzz: true,
         onBuzz,
       },
@@ -51,10 +54,11 @@ describe("ActiveClueScreen", () => {
       props: {
         clue: {
           id: "clue-1",
+          columnTitle: "Literature",
           prompt: "Who wrote Hamlet?",
           value: 300,
+          attemptedPlayerIds: [],
         },
-        score: 500,
         canBuzz: false,
         onBuzz,
         statusMessage: "Alice buzzed first.",
@@ -66,5 +70,25 @@ describe("ActiveClueScreen", () => {
 
     expect(onBuzz).not.toHaveBeenCalled();
     expect(screen.getByText("Alice buzzed first.")).toBeTruthy();
+  });
+
+  test("shows a success-state buzzer label for the player who buzzed first", () => {
+    render(ActiveClueScreen, {
+      props: {
+        clue: {
+          id: "clue-1",
+          columnTitle: "Literature",
+          prompt: "Who wrote Hamlet?",
+          value: 300,
+          attemptedPlayerIds: [],
+        },
+        canBuzz: false,
+        onBuzz: vi.fn(),
+        buttonLabel: "You buzzed first",
+        isSuccessState: true,
+      },
+    });
+
+    expect(screen.getByRole("button", { name: "You buzzed first" })).toBeTruthy();
   });
 });

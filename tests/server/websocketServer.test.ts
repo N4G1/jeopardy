@@ -9,6 +9,7 @@ function createBoardDefinition(): BoardDefinition {
     title: "Quiz Night",
     rowCount: 2,
     columnCount: 2,
+    columnTitles: ["History", "Science"],
     clues: [
       {
         id: "clue-1",
@@ -182,6 +183,163 @@ describe("handleClientMessage", () => {
         message: {
           type: "error",
           message: "A clue must be open before players can buzz.",
+        },
+      },
+    ]);
+  });
+
+  test("starts the game from the lobby and broadcasts board phase", () => {
+    const sessionStore = createDefaultSessionStore();
+
+    handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:create-session",
+        board: createBoardDefinition(),
+      },
+      {
+        nowMs: 10,
+        createSessionId: () => "session-1",
+        createJoinCode: () => "abc123",
+      },
+    );
+
+    handleClientMessage(
+      sessionStore,
+      {
+        connectionId: "socket-2",
+        role: "player",
+      },
+      {
+        type: "player:join",
+        displayName: "Alice",
+      },
+      {
+        nowMs: 20,
+      },
+    );
+
+    const result = handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:return-to-board",
+      },
+      {
+        nowMs: 25,
+      },
+    );
+
+    expect(result.outgoingMessages).toEqual([
+      {
+        audience: "all",
+        message: {
+          type: "session:state",
+          session: expect.objectContaining({
+            phase: "board",
+          }),
+        },
+      },
+    ]);
+  });
+
+  test("rebound deducts points and reopens the clue", () => {
+    const sessionStore = createDefaultSessionStore();
+
+    handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:create-session",
+        board: createBoardDefinition(),
+      },
+      {
+        nowMs: 10,
+        createSessionId: () => "session-1",
+        createJoinCode: () => "abc123",
+      },
+    );
+
+    handleClientMessage(
+      sessionStore,
+      {
+        connectionId: "socket-2",
+        role: "player",
+      },
+      {
+        type: "player:join",
+        displayName: "Alice",
+      },
+      {
+        nowMs: 20,
+      },
+    );
+
+    handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:return-to-board",
+      },
+      {
+        nowMs: 25,
+      },
+    );
+
+    handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:open-clue",
+        clueId: "clue-1",
+      },
+      {
+        nowMs: 30,
+      },
+    );
+
+    handleClientMessage(
+      sessionStore,
+      {
+        connectionId: "socket-2",
+        role: "player",
+        playerId: "socket-2",
+      },
+      {
+        type: "player:buzz",
+      },
+      {
+        nowMs: 35,
+      },
+    );
+
+    const result = handleClientMessage(
+      sessionStore,
+      createHostContext(),
+      {
+        type: "host:rebound",
+        playerId: "socket-2",
+      },
+      {
+        nowMs: 40,
+      },
+    );
+
+    expect(result.outgoingMessages).toEqual([
+      {
+        audience: "all",
+        message: {
+          type: "session:state",
+          session: expect.objectContaining({
+            phase: "board",
+            players: [
+              expect.objectContaining({
+                id: "socket-2",
+                score: -100,
+              }),
+            ],
+          }),
         },
       },
     ]);

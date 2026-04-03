@@ -152,14 +152,26 @@ function handleClientMessage(
       return createBroadcastStateResult(connectionContext, result.value);
     }
 
-    case "host:return-to-board": {
-      const sessionState = sessionStore.getSession();
+    case "host:rebound": {
+      const result = sessionStore.reboundActiveClue({
+        playerId: message.playerId,
+      });
 
-      if (sessionState === undefined) {
-        return createErrorResult(connectionContext, "No active session exists.");
+      if (!result.ok) {
+        return createErrorResult(connectionContext, result.error);
       }
 
-      return createBroadcastStateResult(connectionContext, sessionState);
+      return createBroadcastStateResult(connectionContext, result.value);
+    }
+
+    case "host:return-to-board": {
+      const result = sessionStore.returnToBoard();
+
+      if (!result.ok) {
+        return createErrorResult(connectionContext, result.error);
+      }
+
+      return createBroadcastStateResult(connectionContext, result.value);
     }
   }
 }
