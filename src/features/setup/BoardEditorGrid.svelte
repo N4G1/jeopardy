@@ -474,7 +474,7 @@
   }
 
   .board-editor-grid__title-wrap {
-    width: min(48rem, 100%);
+    width: min(90vw, 120rem);
   }
 
   .board-editor-grid__title-input {
@@ -492,7 +492,7 @@
   }
 
   .board-editor-grid__frame {
-    width: min(72rem, 100%);
+    width: min(90vw, 120rem);
     box-sizing: border-box;
     border: 3px solid #0f2d52;
     background: #275f97;
@@ -577,6 +577,9 @@
 
   .board-editor-grid__clue-row {
     display: grid;
+    box-sizing: border-box;
+    width: 100%;
+    padding-right: 3.35rem;
     border-bottom: 2px solid #0f2d52;
     min-height: 4.25rem;
   }
@@ -591,9 +594,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    min-width: 0;
     min-height: 4.25rem;
-    aspect-ratio: 1;
-    max-height: 6.5rem;
   }
 
   .board-editor-grid__clue-tile:last-child {
@@ -601,6 +604,11 @@
   }
 
   .board-editor-grid__clue-value {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
     font-size: clamp(1rem, 2vw, 1.5rem);
     font-weight: 900;
     text-decoration: underline;
@@ -625,6 +633,8 @@
     justify-content: center;
     gap: 0.25rem;
     padding: 0.2rem;
+    width: 100%;
+    height: 100%;
     max-width: 100%;
     max-height: 100%;
     box-sizing: border-box;

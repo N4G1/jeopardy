@@ -10,9 +10,12 @@
   import EndScreen from "../shared/EndScreen.svelte";
   import GameBoard from "../shared/GameBoard.svelte";
   import Scoreboard from "../shared/Scoreboard.svelte";
+  import TimedToast from "../shared/TimedToast.svelte";
+  import { createTimedToastManager } from "../shared/timedToastManager";
 
   let connectionStatus = $state<"connecting" | "connected" | "disconnected">("connecting");
-  let errorMessage = $state("");
+  let toastMessage = $state("");
+  let toastTone = $state<"info" | "success" | "error">("error");
   let sessionView = $state<GameSessionView | undefined>(undefined);
 
   const playerName = getLocationSearchParam("name");
@@ -23,6 +26,14 @@
   let realtimeClient:
     | ReturnType<typeof createRealtimeClient>
     | undefined;
+  const toastManager = createTimedToastManager({
+    setMessage: (next) => {
+      toastMessage = next;
+    },
+    setTone: (next) => {
+      toastTone = next;
+    },
+  });
 
   try {
     realtimeClient = createRealtimeClient({
@@ -38,7 +49,7 @@
         connectionStatus = "disconnected";
       },
       onError: (message) => {
-        errorMessage = message;
+        toastManager.show(message, "error");
       },
       onMessage: (message: ServerToClientMessage) => {
         if (message.type === "session:state") {
@@ -47,7 +58,7 @@
         }
 
         if (message.type === "error") {
-          errorMessage = message.message;
+          toastManager.show(message.message, "error");
         }
       },
     });
@@ -55,14 +66,14 @@
     connectionStatus = "disconnected";
     connectionSetupError =
       error instanceof Error ? error.message : "Could not start the realtime connection.";
-    errorMessage = connectionSetupError;
+    toastManager.show(connectionSetupError, "error");
   }
 
   if (typeof window !== "undefined" && playerName.length > 0 && realtimeClient !== undefined) {
     realtimeClient.connect();
   } else if (connectionSetupError.length === 0) {
     connectionStatus = "disconnected";
-    errorMessage = "A player name is required before joining the live board.";
+    toastManager.show("A player name is required before joining the live board.", "error");
   }
 
   const currentPlayer = $derived.by<ScoreboardPlayer | undefined>(() =>
@@ -104,6 +115,7 @@
 
   onDestroy(() => {
     realtimeClient?.disconnect();
+    toastManager.destroy();
   });
 
   function getLocationSearchParam(key: string): string {
@@ -116,6 +128,13 @@
 </script>
 
 <section class:screen--gameplay={isGameplayStep} class="screen">
+  <TimedToast
+    message={toastMessage}
+    tone={toastTone}
+    onDismiss={() => {
+      toastManager.clear();
+    }}
+  />
   {#if playerScreenStep === "waiting" || playerScreenStep === "lobby"}
     <header class="screen__header">
       <div>
@@ -130,10 +149,6 @@
       </div>
       <span>Status: {connectionStatus}</span>
     </header>
-  {/if}
-
-  {#if errorMessage.length > 0}
-    <p class="error">{errorMessage}</p>
   {/if}
 
   {#if playerScreenStep === "waiting"}
@@ -207,10 +222,6 @@
     justify-content: space-between;
     gap: 1rem;
     align-items: flex-start;
-  }
-
-  .error {
-    color: #fca5a5;
   }
 
   .panel {

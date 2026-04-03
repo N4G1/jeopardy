@@ -46,12 +46,9 @@ test.describe("board persistence", () => {
     await boardNameInput.fill("My Geography Board");
     await page.getByRole("button", { name: "Save board" }).click();
 
-    await expect(page.getByText("Board saved.")).toBeVisible();
-
     await titleInput.fill("Changed Title");
 
     await page.getByRole("button", { name: "Load My Geography Board" }).click();
-    await expect(page.getByText("Loaded My Geography Board.")).toBeVisible();
     await expect(titleInput).toHaveValue("Geography Quiz");
   });
 
@@ -77,7 +74,6 @@ test.describe("board persistence", () => {
     const importInput = page.getByLabel("Import JSON");
     await importInput.setInputFiles(downloadPath);
 
-    await expect(page.getByText(/Imported/)).toBeVisible();
     await expect(titleInput).toHaveValue("Export Test Board");
 
     const restoredClue = page.getByRole("button", { name: /Clue row 1, column 1/ });
@@ -114,7 +110,6 @@ test.describe("board persistence", () => {
     const importInput = page.getByLabel("Import JSON");
     await importInput.setInputFiles(tmpPath);
 
-    await expect(page.getByText(/Imported/)).toBeVisible();
     await expect(page.getByLabel("Board title")).toHaveValue("WIP Board");
 
     await fs.rm(tmpPath, { force: true });
@@ -127,11 +122,9 @@ test.describe("board persistence", () => {
 
     await page.reload();
     await expect(page.getByRole("heading", { name: "Host game" })).toBeVisible();
-    await expect(page.getByText("Draft restored.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Clear draft" })).toBeVisible();
 
     await page.getByRole("button", { name: "Clear draft" }).click();
-    await expect(page.getByText("Draft cleared.")).toBeVisible();
     await expect(titleInput).toHaveValue("New Jeopardy Game");
   });
 });

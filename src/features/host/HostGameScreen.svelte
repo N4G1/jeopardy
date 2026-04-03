@@ -32,18 +32,26 @@
   import EndScreen from "src/features/shared/EndScreen.svelte";
   import GameBoard from "src/features/shared/GameBoard.svelte";
   import Scoreboard from "src/features/shared/Scoreboard.svelte";
+  import TimedToast from "src/features/shared/TimedToast.svelte";
+  import { createTimedToastManager } from "src/features/shared/timedToastManager";
   import { canEnterGameBoard, getHostScreenStep } from "./hostScreenState";
 
   let boardDefinition = $state(createBoardDefinition());
-  let errorMessage = $state("");
-  let joinLinkCopyMessage = $state("");
+  let toastMessage = $state("");
+  let toastTone = $state<"info" | "success" | "error">("info");
   let sessionView = $state<GameSessionView | undefined>(undefined);
-  let joinLinkCopyMessageTimeout: ReturnType<typeof setTimeout> | undefined;
-  let boardStorageMessage = $state("");
   let hasPersistedDraft = $state(false);
   let isStorageReady = $state(false);
   let savedBoards = $state<SavedBoardSummary[]>([]);
   let hostingMode = $state<HostingMode>("lan");
+  const toastManager = createTimedToastManager({
+    setMessage: (next) => {
+      toastMessage = next;
+    },
+    setTone: (next) => {
+      toastTone = next;
+    },
+  });
 
   let hostSocket: WebSocket | undefined;
   const hostScreenStep = $derived(getHostScreenStep(sessionView));
@@ -71,6 +79,17 @@
     boardDefinition = nextBoardDefinition;
   }
 
+  function dismissToast(): void {
+    toastManager.clear();
+  }
+
+  function showToast(
+    message: string,
+    tone: "info" | "success" | "error" = "info",
+  ): void {
+    toastManager.show(message, tone);
+  }
+
   function fillSampleBoard(): void {
     updateBoardDefinition(
       normalizePlayableBoardOrThrow(fillBoardDefinitionWithSampleContent(boardDefinition)),
@@ -81,18 +100,16 @@
     const safeName = name.trim();
 
     if (safeName.length === 0) {
-      errorMessage = "Board name is required before saving.";
+      showToast("Board name is required before saving.", "error");
       return;
     }
-
-    errorMessage = "";
 
     try {
       await saveNamedBoard(safeName, boardDefinition);
       await refreshSavedBoards();
-      boardStorageMessage = "Board saved.";
+      showToast("Board saved.", "success");
     } catch {
-      errorMessage = "Could not save the board.";
+      showToast("Could not save the board.", "error");
     }
   }
 
@@ -101,16 +118,15 @@
       const savedBoard = await loadSavedBoard(savedBoardId);
 
       if (savedBoard === undefined) {
-        errorMessage = "Saved board was not found.";
+        showToast("Saved board was not found.", "error");
         return;
       }
 
       boardDefinition = normalizeBoardForHostEditor(savedBoard.boardDefinition);
-      errorMessage = "";
-      boardStorageMessage = `Loaded ${savedBoard.name}.`;
+      showToast(`Loaded ${savedBoard.name}.`, "success");
       hasPersistedDraft = true;
     } catch {
-      errorMessage = "Could not load the saved board.";
+      showToast("Could not load the saved board.", "error");
     }
   }
 
@@ -118,10 +134,9 @@
     try {
       await deleteSavedBoard(savedBoardId);
       await refreshSavedBoards();
-      errorMessage = "";
-      boardStorageMessage = "Board deleted.";
+      showToast("Board deleted.", "success");
     } catch {
-      errorMessage = "Could not delete the saved board.";
+      showToast("Could not delete the saved board.", "error");
     }
   }
 
@@ -130,10 +145,9 @@
       await clearDraftBoard();
       boardDefinition = createBoardDefinition();
       hasPersistedDraft = false;
-      errorMessage = "";
-      boardStorageMessage = "Draft cleared.";
+      showToast("Draft cleared.", "success");
     } catch {
-      errorMessage = "Could not clear the draft.";
+      showToast("Could not clear the draft.", "error");
     }
   }
 
@@ -149,10 +163,9 @@
       anchor.download = fileName;
       anchor.click();
       URL.revokeObjectURL(downloadUrl);
-      errorMessage = "";
-      boardStorageMessage = "Board exported.";
+      showToast("Board exported.", "success");
     } catch {
-      errorMessage = "Could not export the board.";
+      showToast("Could not export the board.", "error");
     }
   }
 
@@ -168,23 +181,24 @@
         importBoardDefinitionFromJson(await file.text()),
       );
       hasPersistedDraft = true;
-      errorMessage = "";
-      boardStorageMessage = `Imported ${file.name}.`;
+      showToast(`Imported ${file.name}.`, "success");
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : "Could not import the board.";
+      showToast(error instanceof Error ? error.message : "Could not import the board.", "error");
     }
   }
 
   function startSession(): void {
-    errorMessage = "";
-    joinLinkCopyMessage = "";
+    dismissToast();
 
     hostSocket?.close();
 
     try {
       hostSocket = new WebSocket(getServerWebSocketUrl({ mode: hostingMode }));
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : "Could not start the realtime connection.";
+      showToast(
+        error instanceof Error ? error.message : "Could not start the realtime connection.",
+        "error",
+      );
       return;
     }
 
@@ -204,7 +218,7 @@
       }
 
       if (message.type === "error") {
-        errorMessage = message.message;
+        showToast(message.message, "error");
       }
     });
 
@@ -214,11 +228,10 @@
 
   function startGame(): void {
     if (!canOpenGameBoard) {
-      errorMessage = "At least one player must join before the game can start.";
+      showToast("At least one player must join before the game can start.", "error");
       return;
     }
 
-    errorMessage = "";
     sendMessage({
       type: "host:return-to-board",
     });
@@ -231,13 +244,9 @@
 
     try {
       await copyTextToClipboard(joinUrl);
-      joinLinkCopyMessage = "Join link copied.";
-      clearTimeout(joinLinkCopyMessageTimeout);
-      joinLinkCopyMessageTimeout = setTimeout(() => {
-        joinLinkCopyMessage = "";
-      }, 3000);
+      showToast("Join link copied.", "success");
     } catch {
-      errorMessage = "Could not copy the join link.";
+      showToast("Could not copy the join link.", "error");
     }
   }
 
@@ -273,7 +282,7 @@
 
   function sendMessage(message: object): void {
     if (hostSocket?.readyState !== WebSocket.OPEN) {
-      errorMessage = "Server connection is not ready.";
+      showToast("Server connection is not ready.", "error");
       return;
     }
 
@@ -293,13 +302,13 @@
         try {
           boardDefinition = normalizeBoardForHostEditor(draftBoard);
           hasPersistedDraft = true;
-          boardStorageMessage = "Draft restored.";
+          showToast("Draft restored.", "success");
         } catch {
-          errorMessage = "Could not restore the saved draft.";
+          showToast("Could not restore the saved draft.", "error");
         }
       }
     } catch {
-      errorMessage = "Could not access browser board storage.";
+      showToast("Could not access browser board storage.", "error");
     } finally {
       isStorageReady = true;
     }
@@ -319,13 +328,13 @@
         hasPersistedDraft = true;
       })
       .catch(() => {
-        errorMessage = "Could not autosave the board draft.";
+        showToast("Could not autosave the board draft.", "error");
       });
   });
 
   onDestroy(() => {
     hostSocket?.close();
-    clearTimeout(joinLinkCopyMessageTimeout);
+    toastManager.destroy();
   });
 </script>
 
@@ -334,9 +343,7 @@
   class:screen--host-editor={hostScreenStep === "editor"}
   class="screen"
 >
-  {#if errorMessage.length > 0}
-    <p class="error">{errorMessage}</p>
-  {/if}
+  <TimedToast message={toastMessage} tone={toastTone} onDismiss={dismissToast} />
 
   {#if hostScreenStep === "editor"}
     <div class="host-editor">
@@ -378,10 +385,6 @@
           onSaveBoard={saveCurrentBoard}
         />
 
-        {#if boardStorageMessage.length > 0}
-          <p class="host-editor__storage-message">{boardStorageMessage}</p>
-        {/if}
-
         <div class="host-editor__cta-row">
           {#if import.meta.env.DEV}
             <button type="button" class="host-editor__cta host-editor__cta--secondary" onclick={fillSampleBoard}>
@@ -398,9 +401,6 @@
         <h1>{sessionView.title}</h1>
         <p>Share this join link before starting the game.</p>
         <button type="button" class="panel__copy-link" onclick={copyJoinLink}>{joinUrl}</button>
-        {#if joinLinkCopyMessage.length > 0}
-          <p class="panel__success">{joinLinkCopyMessage}</p>
-        {/if}
         {#if !canOpenGameBoard}
           <p class="panel__notice">At least one player must join before the game can start.</p>
         {/if}
@@ -489,12 +489,6 @@
     gap: 0;
   }
 
-  .screen--host-editor > .error {
-    padding: 1rem 1.25rem 0;
-    max-width: 48rem;
-    margin-inline: auto;
-  }
-
   .host-editor {
     display: flex;
     flex-direction: column;
@@ -526,7 +520,7 @@
 
   .host-editor__dock {
     box-sizing: border-box;
-    width: min(72rem, 100%);
+    width: min(90vw, 120rem);
     margin: 0 auto;
     padding: 1rem 1rem 1.5rem;
     border: 3px solid #0f2d52;
@@ -566,13 +560,6 @@
     font-weight: 700;
     color: #f8fafc;
     cursor: pointer;
-  }
-
-  .host-editor__storage-message {
-    margin: 0;
-    color: #bbf7d0;
-    font-weight: 600;
-    font-size: 0.95rem;
   }
 
   .host-editor__cta-row {
@@ -650,11 +637,6 @@
     color: #fcd34d;
   }
 
-  .panel__success {
-    color: #86efac;
-    margin: 0;
-  }
-
   .panel__buzzed-player {
     margin: 0;
     padding: 0.45rem 0.65rem;
@@ -702,10 +684,6 @@
 
   .screen__actions--inline {
     justify-items: start;
-  }
-
-  .error {
-    color: #fca5a5;
   }
 
   button {

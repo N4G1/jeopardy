@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import { buildPlayerPath, getSearchParam } from "src/app/navigation";
   import { getHostingMode } from "src/realtime/client";
+  import TimedToast from "src/features/shared/TimedToast.svelte";
+  import { createTimedToastManager } from "src/features/shared/timedToastManager";
 
   function getJoinCode(): string {
     if (typeof window === "undefined") {
@@ -21,20 +24,42 @@
   let displayName = $state("");
   let joinCode = $state(getJoinCode());
   let hostingMode = $state(getHostingModeFromLocation());
+  let toastMessage = $state("");
+  let toastTone = $state<"info" | "success" | "error">("error");
+  const toastManager = createTimedToastManager({
+    setMessage: (next) => {
+      toastMessage = next;
+    },
+    setTone: (next) => {
+      toastTone = next;
+    },
+  });
 
   function continueToPlayerScreen(): void {
     const safeDisplayName = displayName.trim();
 
     if (safeDisplayName.length === 0) {
+      toastManager.show("Display name is required before joining.", "error");
       return;
     }
 
     window.history.pushState({}, "", buildPlayerPath(joinCode, safeDisplayName, hostingMode));
     window.dispatchEvent(new PopStateEvent("popstate"));
   }
+
+  onDestroy(() => {
+    toastManager.destroy();
+  });
 </script>
 
 <section class="screen">
+  <TimedToast
+    message={toastMessage}
+    tone={toastTone}
+    onDismiss={() => {
+      toastManager.clear();
+    }}
+  />
   <h1>Join game</h1>
   <p>Enter your display name and continue to the lobby.</p>
 
