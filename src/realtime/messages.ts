@@ -158,8 +158,8 @@ function createSessionStateView(sessionState: SessionStateSource): GameSessionVi
             prompt: activeClueDefinition.prompt,
             value: activeClueDefinition.value,
             attemptedPlayerIds: sessionState.activeClue?.attemptedPlayerIds ?? [],
-            ...(activeClueDefinition.media !== undefined
-              ? { media: activeClueDefinition.media }
+            ...(activeClueDefinition.questionMedia !== undefined
+              ? { media: activeClueDefinition.questionMedia }
               : {}),
           },
         }

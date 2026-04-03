@@ -23,6 +23,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json",
     "lint": "oxlint -D correctness -D suspicious --vitest-plugin src server vite.config.ts vitest.config.ts",
     "format": "oxfmt --write \"**/*.{ts,json,md,html,css}\"",
@@ -35,6 +37,7 @@
     "ws": "^8.20.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@testing-library/svelte": "^5.3.1",
     "@types/node": "^25.5.0",

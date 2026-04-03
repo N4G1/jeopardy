@@ -1,5 +1,5 @@
 import type { BoardDefinition } from "./boardSchema";
-import { validateBoardDefinition } from "./boardSchema";
+import { migrateLegacyClueMediaBoard, validateBoardDefinitionForEditor } from "./boardSchema";
 
 function exportBoardDefinitionToJson(boardDefinition: BoardDefinition): string {
   return JSON.stringify(boardDefinition, null, 2);
@@ -18,13 +18,14 @@ function importBoardDefinitionFromJson(json: string): BoardDefinition {
     throw new Error("Board file is invalid.");
   }
 
-  const validationIssues = validateBoardDefinition(parsedValue);
+  const migrated = migrateLegacyClueMediaBoard(parsedValue);
+  const validationIssues = validateBoardDefinitionForEditor(migrated);
 
   if (validationIssues.length > 0) {
     throw new Error("Board file is invalid.");
   }
 
-  return parsedValue;
+  return migrated;
 }
 
 function isBoardDefinition(value: unknown): value is BoardDefinition {

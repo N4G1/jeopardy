@@ -38,6 +38,7 @@ describe("realtime client helpers", () => {
     expect(() =>
       getServerWebSocketUrl({
         mode: "internet",
+        publicServerUrl: "",
       }),
     ).toThrow("Internet mode is not configured.");
   });

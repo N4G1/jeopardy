@@ -5,11 +5,17 @@
   import { buildJoinUrl } from "src/app/navigation";
   import { getServerWebSocketUrl, type HostingMode } from "src/realtime/client";
   import { exportBoardDefinitionToJson, importBoardDefinitionFromJson } from "src/features/setup/boardFile";
+  import { normalizeBoardEditorBoard } from "src/features/setup/boardEditorState";
   import {
     createBoardDefinition,
+    fillBoardDefinitionWithSampleContent,
     type BoardDefinition,
-    validateBoardDefinition,
   } from "src/features/setup/boardSchema";
+  import {
+    normalizeBoardForHostEditor,
+    normalizeImportedBoardDefinition,
+    normalizePlayableBoardOrThrow,
+  } from "./boardDefinitionApply";
   import BoardStoragePanel from "src/features/setup/BoardStoragePanel.svelte";
   import {
     clearDraftBoard,
@@ -65,6 +71,12 @@
     boardDefinition = nextBoardDefinition;
   }
 
+  function fillSampleBoard(): void {
+    updateBoardDefinition(
+      normalizePlayableBoardOrThrow(fillBoardDefinitionWithSampleContent(boardDefinition)),
+    );
+  }
+
   async function saveCurrentBoard(name: string): Promise<void> {
     const safeName = name.trim();
 
@@ -93,7 +105,7 @@
         return;
       }
 
-      applyExternalBoardDefinition(savedBoard.boardDefinition);
+      boardDefinition = normalizeBoardForHostEditor(savedBoard.boardDefinition);
       errorMessage = "";
       boardStorageMessage = `Loaded ${savedBoard.name}.`;
       hasPersistedDraft = true;
@@ -152,7 +164,9 @@
     }
 
     try {
-      applyExternalBoardDefinition(importBoardDefinitionFromJson(await file.text()));
+      boardDefinition = normalizeImportedBoardDefinition(
+        importBoardDefinitionFromJson(await file.text()),
+      );
       hasPersistedDraft = true;
       errorMessage = "";
       boardStorageMessage = `Imported ${file.name}.`;
@@ -177,7 +191,7 @@
     hostSocket.addEventListener("open", () => {
       sendMessage({
         type: "host:create-session",
-        board: boardDefinition,
+        board: normalizeBoardEditorBoard(boardDefinition),
       });
     });
 
@@ -266,14 +280,6 @@
     hostSocket.send(JSON.stringify(message));
   }
 
-  function applyExternalBoardDefinition(nextBoardDefinition: BoardDefinition): void {
-    if (validateBoardDefinition(nextBoardDefinition).length > 0) {
-      throw new Error("Board data is invalid.");
-    }
-
-    boardDefinition = nextBoardDefinition;
-  }
-
   async function refreshSavedBoards(): Promise<void> {
     savedBoards = await listSavedBoards();
   }
@@ -284,9 +290,13 @@
       savedBoards = await listSavedBoards();
 
       if (draftBoard !== undefined) {
-        boardDefinition = draftBoard;
-        hasPersistedDraft = true;
-        boardStorageMessage = "Draft restored.";
+        try {
+          boardDefinition = normalizeBoardForHostEditor(draftBoard);
+          hasPersistedDraft = true;
+          boardStorageMessage = "Draft restored.";
+        } catch {
+          errorMessage = "Could not restore the saved draft.";
+        }
       }
     } catch {
       errorMessage = "Could not access browser board storage.";
@@ -319,48 +329,69 @@
   });
 </script>
 
-<section class:screen--gameplay={isGameplayStep} class="screen">
+<section
+  class:screen--gameplay={isGameplayStep}
+  class:screen--host-editor={hostScreenStep === "editor"}
+  class="screen"
+>
   {#if errorMessage.length > 0}
     <p class="error">{errorMessage}</p>
   {/if}
 
   {#if hostScreenStep === "editor"}
-    <header class="screen__header">
-      <div>
-        <h1>Host game</h1>
-        <p>Create the board, then start the session.</p>
-        <fieldset class="screen__mode-selector">
-          <legend>Hosting mode</legend>
-          <label>
-            <input bind:group={hostingMode} type="radio" value="lan" />
-            <span>LAN</span>
-          </label>
-          <label>
-            <input bind:group={hostingMode} type="radio" value="internet" />
-            <span>Internet</span>
-          </label>
+    <div class="host-editor">
+      <header class="host-editor__banner">
+        <h1 class="host-editor__title">Host game</h1>
+        <p class="host-editor__subtitle">Create the board, then start the session.</p>
+      </header>
+
+      <BoardEditor
+        {boardDefinition}
+        fullBleedBlue={false}
+        onBoardChange={updateBoardDefinition}
+        showDevAutofill={false}
+      />
+
+      <div class="host-editor__dock">
+        <fieldset class="host-editor__mode-selector">
+          <legend class="host-editor__legend">Hosting mode</legend>
+          <div class="host-editor__mode-options">
+            <label class="host-editor__mode-label">
+              <input bind:group={hostingMode} type="radio" value="lan" />
+              <span>LAN</span>
+            </label>
+            <label class="host-editor__mode-label">
+              <input bind:group={hostingMode} type="radio" value="internet" />
+              <span>Internet</span>
+            </label>
+          </div>
         </fieldset>
-      </div>
 
-      <div class="screen__actions">
-        <button type="button" onclick={startSession}>Create Lobby</button>
-      </div>
-    </header>
+        <BoardStoragePanel
+          hasDraft={hasPersistedDraft}
+          {savedBoards}
+          onClearDraft={clearDraft}
+          onDeleteBoard={deleteSavedBoardFromLibrary}
+          onExportJson={exportBoardToJson}
+          onImportJson={importBoardFromJson}
+          onLoadBoard={loadSavedBoardIntoEditor}
+          onSaveBoard={saveCurrentBoard}
+        />
 
-    <BoardStoragePanel
-      hasDraft={hasPersistedDraft}
-      {savedBoards}
-      onClearDraft={clearDraft}
-      onDeleteBoard={deleteSavedBoardFromLibrary}
-      onExportJson={exportBoardToJson}
-      onImportJson={importBoardFromJson}
-      onLoadBoard={loadSavedBoardIntoEditor}
-      onSaveBoard={saveCurrentBoard}
-    />
-    {#if boardStorageMessage.length > 0}
-      <p class="screen__success">{boardStorageMessage}</p>
-    {/if}
-    <BoardEditor {boardDefinition} onBoardChange={updateBoardDefinition} />
+        {#if boardStorageMessage.length > 0}
+          <p class="host-editor__storage-message">{boardStorageMessage}</p>
+        {/if}
+
+        <div class="host-editor__cta-row">
+          {#if import.meta.env.DEV}
+            <button type="button" class="host-editor__cta host-editor__cta--secondary" onclick={fillSampleBoard}>
+              Fill sample board
+            </button>
+          {/if}
+          <button type="button" class="host-editor__cta" onclick={startSession}>Create Lobby</button>
+        </div>
+      </div>
+    </div>
   {:else if hostScreenStep === "lobby" && sessionView !== undefined}
     <div class="screen__live">
       <section class="panel panel--lobby">
@@ -452,27 +483,133 @@
     align-content: start;
   }
 
-  .screen__header {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
+  .screen--host-editor {
+    max-width: none;
+    padding: 0;
+    gap: 0;
   }
 
-  .screen__mode-selector {
-    margin: 1rem 0 0;
-    border: 1px solid #475569;
-    padding: 0.75rem 1rem;
+  .screen--host-editor > .error {
+    padding: 1rem 1.25rem 0;
+    max-width: 48rem;
+    margin-inline: auto;
+  }
+
+  .host-editor {
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background: linear-gradient(180deg, #0d3460 0%, #0b2a4a 38%, #071826 100%);
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .host-editor__banner {
+    text-align: center;
+    padding: 1.25rem 1rem 0.75rem;
+    color: #efff54;
+  }
+
+  .host-editor__title {
+    margin: 0;
+    font-size: clamp(1.35rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .host-editor__subtitle {
+    margin: 0.35rem 0 0;
+    font-size: clamp(0.9rem, 1.8vw, 1.05rem);
+    color: #dbeafe;
+    font-weight: 600;
+  }
+
+  .host-editor__dock {
+    box-sizing: border-box;
+    width: min(72rem, 100%);
+    margin: 0 auto;
+    padding: 1rem 1rem 1.5rem;
+    border: 3px solid #0f2d52;
+    background: #275f97;
+    box-shadow: 0 12px 28px rgb(8 20 40 / 0.35);
+    display: grid;
+    gap: 1rem;
+  }
+
+  .host-editor__mode-selector {
+    margin: 0;
+    border: 2px solid #0f2d52;
+    padding: 0.65rem 0.85rem;
+    background: #1e4d7a;
+    color: #efff54;
+  }
+
+  .host-editor__legend {
+    padding: 0 0.25rem;
+    font-weight: 800;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+  }
+
+  .host-editor__mode-options {
+    display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
     align-items: center;
-    flex-wrap: wrap;
+    margin-top: 0.35rem;
   }
 
-  .screen__mode-selector label {
+  .host-editor__mode-label {
     display: flex;
     gap: 0.45rem;
     align-items: center;
+    font-weight: 700;
+    color: #f8fafc;
+    cursor: pointer;
+  }
+
+  .host-editor__storage-message {
+    margin: 0;
+    color: #bbf7d0;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .host-editor__cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: 0.25rem;
+    border-top: 2px solid #0f2d52;
+  }
+
+  .host-editor__cta {
+    border: 2px solid #0f2d52;
+    border-radius: 0;
+    background: #16a34a;
+    color: #f0fdf4;
+    padding: 0.55rem 1rem;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 800;
+    line-height: 1.1;
+    cursor: pointer;
+  }
+
+  .host-editor__cta--secondary {
+    background: #0f2944;
+    color: #efff54;
+    border-color: #0f2d52;
+    font-weight: 700;
+  }
+
+  .host-editor__cta:disabled {
+    background: #475569;
+    border-color: #334155;
+    color: #cbd5e1;
+    cursor: not-allowed;
   }
 
   .screen__actions {
@@ -569,11 +706,6 @@
 
   .error {
     color: #fca5a5;
-  }
-
-  .screen__success {
-    margin: 0;
-    color: #86efac;
   }
 
   button {

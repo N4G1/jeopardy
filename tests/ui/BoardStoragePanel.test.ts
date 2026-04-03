@@ -77,4 +77,42 @@ describe("BoardStoragePanel", () => {
 
     expect(screen.getByRole("button", { name: "Clear draft" })).toBeTruthy();
   });
+
+  test("exposes export JSON as an accessible button", async () => {
+    const onExportJson = vi.fn();
+
+    render(BoardStoragePanel, {
+      props: {
+        hasDraft: false,
+        savedBoards: [],
+        onSaveBoard: vi.fn(),
+        onLoadBoard: vi.fn(),
+        onDeleteBoard: vi.fn(),
+        onClearDraft: vi.fn(),
+        onExportJson,
+        onImportJson: vi.fn(),
+      },
+    });
+
+    await fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+
+    expect(onExportJson).toHaveBeenCalledTimes(1);
+  });
+
+  test("exposes import JSON with an accessible file control", () => {
+    render(BoardStoragePanel, {
+      props: {
+        hasDraft: false,
+        savedBoards: [],
+        onSaveBoard: vi.fn(),
+        onLoadBoard: vi.fn(),
+        onDeleteBoard: vi.fn(),
+        onClearDraft: vi.fn(),
+        onExportJson: vi.fn(),
+        onImportJson: vi.fn(),
+      },
+    });
+
+    expect(screen.getByLabelText("Import JSON")).toBeTruthy();
+  });
 });

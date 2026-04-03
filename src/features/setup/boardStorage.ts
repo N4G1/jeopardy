@@ -20,7 +20,7 @@ let databasePromise: Promise<IDBDatabase> | undefined;
 
 async function saveDraftBoard(boardDefinition: BoardDefinition): Promise<void> {
   await withStore(draftStoreName, "readwrite", (store) =>
-    waitForRequest(store.put(structuredClone(boardDefinition), currentDraftKey)),
+    waitForRequest(store.put(deepClone(boardDefinition), currentDraftKey)),
   );
 }
 
@@ -29,7 +29,7 @@ function loadDraftBoard(): Promise<BoardDefinition | undefined> {
     const boardDefinition = await waitForRequest<BoardDefinition | undefined>(
       store.get(currentDraftKey),
     );
-    return boardDefinition === undefined ? undefined : structuredClone(boardDefinition);
+    return boardDefinition === undefined ? undefined : deepClone(boardDefinition);
   });
 }
 
@@ -46,7 +46,7 @@ async function saveNamedBoard(name: string, boardDefinition: BoardDefinition): P
     name: name.trim(),
     title: boardDefinition.title,
     updatedAt: new Date().toISOString(),
-    boardDefinition: structuredClone(boardDefinition),
+    boardDefinition: deepClone(boardDefinition),
   };
 
   await withStore(savedBoardsStoreName, "readwrite", (store) => waitForRequest(store.put(record)));
@@ -56,7 +56,7 @@ async function saveNamedBoard(name: string, boardDefinition: BoardDefinition): P
 function loadSavedBoard(id: string): Promise<SavedBoardRecord | undefined> {
   return withStore(savedBoardsStoreName, "readonly", async (store) => {
     const record = await waitForRequest<SavedBoardRecord | undefined>(store.get(id));
-    return record === undefined ? undefined : structuredClone(record);
+    return record === undefined ? undefined : deepClone(record);
   });
 }
 
@@ -133,12 +133,21 @@ function waitForRequest<TValue>(request: IDBRequest<TValue>): Promise<TValue> {
   });
 }
 
+// JSON round-trip instead of structuredClone because Svelte 5 $state proxies are not structurally cloneable.
+function deepClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 function createBoardId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
 
   return `board-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function resetDatabaseConnection(): void {
+  databasePromise = undefined;
 }
 
 export type { SavedBoardRecord, SavedBoardSummary };
@@ -148,6 +157,7 @@ export {
   listSavedBoards,
   loadDraftBoard,
   loadSavedBoard,
+  resetDatabaseConnection,
   saveDraftBoard,
   saveNamedBoard,
 };

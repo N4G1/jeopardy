@@ -7,6 +7,7 @@ import {
   listSavedBoards,
   loadDraftBoard,
   loadSavedBoard,
+  resetDatabaseConnection,
   saveDraftBoard,
   saveNamedBoard,
 } from "src/features/setup/boardStorage";
@@ -188,6 +189,8 @@ class FakeIndexedDbFactory {
 }
 
 beforeEach(async () => {
+  resetDatabaseConnection();
+
   Object.defineProperty(globalThis, "indexedDB", {
     configurable: true,
     writable: true,
@@ -204,6 +207,25 @@ describe("boardStorage", () => {
     await saveDraftBoard(boardDefinition);
 
     await expect(loadDraftBoard()).resolves.toEqual(boardDefinition);
+  });
+
+  test("saves a draft board passed as a proxy object", async () => {
+    const boardDefinition = createBoardDefinition();
+    const proxied = new Proxy(boardDefinition, {});
+
+    await saveDraftBoard(proxied);
+
+    await expect(loadDraftBoard()).resolves.toEqual(boardDefinition);
+  });
+
+  test("saves a named board passed as a proxy object", async () => {
+    const boardDefinition = createBoardDefinition();
+    const proxied = new Proxy(boardDefinition, {});
+
+    const id = await saveNamedBoard("Proxy Quiz", proxied);
+    const loaded = await loadSavedBoard(id);
+
+    expect(loaded?.boardDefinition).toEqual(boardDefinition);
   });
 
   test("clears the draft board", async () => {

@@ -64,6 +64,29 @@ describe("boardFile", () => {
     );
   });
 
+  test("imports a board with empty clues (work-in-progress)", () => {
+    const boardDefinition: BoardDefinition = {
+      title: "Draft Board",
+      rowCount: 1,
+      columnCount: 1,
+      columnTitles: ["Category"],
+      clues: [
+        {
+          id: "c0",
+          rowIndex: 0,
+          columnIndex: 0,
+          value: 100,
+          prompt: "",
+          response: "",
+        },
+      ],
+    };
+
+    const json = exportBoardDefinitionToJson(boardDefinition);
+
+    expect(importBoardDefinitionFromJson(json)).toEqual(boardDefinition);
+  });
+
   test("rejects structurally invalid board definitions", () => {
     expect(() =>
       importBoardDefinitionFromJson(
@@ -76,5 +99,34 @@ describe("boardFile", () => {
         }),
       ),
     ).toThrow("Board file is invalid.");
+  });
+
+  test("imports JSON with legacy clue media and maps to questionMedia", () => {
+    const json = JSON.stringify({
+      title: "Legacy import",
+      rowCount: 1,
+      columnCount: 1,
+      columnTitles: ["Solo"],
+      clues: [
+        {
+          id: "c0",
+          rowIndex: 0,
+          columnIndex: 0,
+          value: 100,
+          prompt: "Question",
+          response: "Answer",
+          media: {
+            kind: "image",
+            fileName: "q.png",
+            url: "https://example.com/q.png",
+          },
+        },
+      ],
+    });
+
+    const board = importBoardDefinitionFromJson(json);
+
+    expect(board.clues[0]?.questionMedia?.url).toBe("https://example.com/q.png");
+    expect("media" in (board.clues[0] as object)).toBe(false);
   });
 });
