@@ -389,14 +389,14 @@ describe("BoardEditor", () => {
     const fileQ = new File(["q"], "q.png", { type: "image/png" });
     const fileA = new File(["a"], "a.png", { type: "image/png" });
 
-    await fireEvent.change(screen.getByLabelText(/question image/i), {
+    await fireEvent.change(screen.getByLabelText(/question media/i), {
       target: { files: [fileQ] },
     });
     await waitFor(() => {
       expect(screen.getByRole("img", { name: "q.png" })).toBeTruthy();
     });
 
-    await fireEvent.change(screen.getByLabelText(/answer image/i), {
+    await fireEvent.change(screen.getByLabelText(/answer media/i), {
       target: { files: [fileA] },
     });
     await waitFor(() => {

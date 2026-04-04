@@ -134,4 +134,35 @@ describe("ActiveClueScreen", () => {
     expect(container.querySelector(".hidden-answer")).toBeNull();
     expect(screen.getByText("Shakespeare")).toBeTruthy();
   });
+
+  test("renders question audio and revealed answer video with manual controls", () => {
+    const { container } = render(ActiveClueScreen, {
+      props: {
+        clue: {
+          id: "clue-1",
+          columnTitle: "Literature",
+          prompt: "",
+          value: 300,
+          attemptedPlayerIds: [],
+          answerRevealed: true,
+          response: "",
+          questionMedia: {
+            kind: "audio",
+            fileName: "question.mp3",
+            url: "https://example.com/question.mp3",
+          },
+          answerMedia: {
+            kind: "video",
+            fileName: "answer.mp4",
+            url: "https://example.com/answer.mp4",
+          },
+        },
+        canBuzz: true,
+        onBuzz: vi.fn(),
+      },
+    });
+
+    expect(container.querySelector("audio")).toBeTruthy();
+    expect(container.querySelector("video")).toBeTruthy();
+  });
 });

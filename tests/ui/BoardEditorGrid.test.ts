@@ -441,6 +441,37 @@ describe("BoardEditorGrid", () => {
       expect(imgs[0]?.getAttribute("alt")).toBe("A side");
     });
 
+    test("audio question media and video answer media render as media previews", async () => {
+      const boardDefinition = patchClue(
+        createBoardDefinition({ rowCount: 1, columnCount: 1 }),
+        0,
+        0,
+        {
+          prompt: "",
+          response: "",
+          questionMedia: {
+            kind: "audio",
+            fileName: "q.mp3",
+            url: "https://example.com/q.mp3",
+          },
+          answerMedia: {
+            kind: "video",
+            fileName: "a.mp4",
+            url: "https://example.com/a.mp4",
+          },
+        },
+      );
+      renderBoard(boardDefinition);
+
+      const tile = clueTile(1, 1);
+      expect(tile.querySelector("audio")).toBeTruthy();
+
+      await fireEvent.mouseEnter(tile);
+      await tick();
+
+      expect(tile.querySelector("video")).toBeTruthy();
+    });
+
     test("image-only filled clue shows image in answer preview when alt text is missing (visual, not text fallback)", async () => {
       const boardDefinition = patchClue(
         createBoardDefinition({ rowCount: 1, columnCount: 1 }),

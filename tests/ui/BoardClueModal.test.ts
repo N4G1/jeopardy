@@ -116,7 +116,7 @@ describe("BoardClueModal", () => {
     });
 
     const file = new File(["x"], "escape.png", { type: "image/png" });
-    await fireEvent.change(screen.getByLabelText(/question image/i), {
+    await fireEvent.change(screen.getByLabelText(/question media/i), {
       target: { files: [file] },
     });
     await waitFor(() => {
@@ -191,7 +191,7 @@ describe("BoardClueModal", () => {
       },
     });
 
-    const questionImageInput = screen.getByLabelText(/question image/i);
+    const questionImageInput = screen.getByLabelText(/question media/i);
     await fireEvent.change(questionImageInput, { target: { files: [file] } });
 
     await waitFor(() => {
@@ -227,7 +227,7 @@ describe("BoardClueModal", () => {
       },
     });
 
-    const answerImageInput = screen.getByLabelText(/answer image/i);
+    const answerImageInput = screen.getByLabelText(/answer media/i);
     await fireEvent.change(answerImageInput, { target: { files: [file] } });
 
     await waitFor(() => {
@@ -263,10 +263,10 @@ describe("BoardClueModal", () => {
       },
     });
 
-    await fireEvent.change(screen.getByLabelText(/question image/i), {
+    await fireEvent.change(screen.getByLabelText(/question media/i), {
       target: { files: [fileQ] },
     });
-    await fireEvent.change(screen.getByLabelText(/answer image/i), {
+    await fireEvent.change(screen.getByLabelText(/answer media/i), {
       target: { files: [fileA] },
     });
 
@@ -286,6 +286,49 @@ describe("BoardClueModal", () => {
     expect(payload.answerImage?.fileName).toBe("a.gif");
   });
 
+  test("save includes audio and video media uploads", async () => {
+    const onSave = vi.fn();
+    const audioFile = new File(["audio"], "question.mp3", { type: "audio/mpeg" });
+    const videoFile = new File(["video"], "answer.mp4", { type: "video/mp4" });
+
+    render(BoardClueModal, {
+      props: {
+        isOpen: true,
+        draftClue: createDraft(),
+        onSave,
+        onClose: vi.fn(),
+      },
+    });
+
+    await fireEvent.change(screen.getByLabelText(/question media/i), {
+      target: { files: [audioFile] },
+    });
+    await fireEvent.change(screen.getByLabelText(/answer media/i), {
+      target: { files: [videoFile] },
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector("audio")).toBeTruthy();
+      expect(document.querySelector("video")).toBeTruthy();
+    });
+
+    await fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalled();
+    });
+
+    const payload = onSave.mock.calls[0]![0] as BoardClueModalDraft;
+    expect(payload.questionImage).toMatchObject({
+      kind: "audio",
+      fileName: "question.mp3",
+    });
+    expect(payload.answerImage).toMatchObject({
+      kind: "video",
+      fileName: "answer.mp4",
+    });
+  });
+
   test("saved payload merges updated text with uploaded image fields", async () => {
     const onSave = vi.fn();
     const file = new File(["z"], "z.png", { type: "image/png" });
@@ -302,7 +345,7 @@ describe("BoardClueModal", () => {
     await fireEvent.input(screen.getByLabelText("Question text"), {
       target: { value: "P1" },
     });
-    await fireEvent.change(screen.getByLabelText(/question image/i), {
+    await fireEvent.change(screen.getByLabelText(/question media/i), {
       target: { files: [file] },
     });
 
@@ -336,12 +379,12 @@ describe("BoardClueModal", () => {
     });
 
     const badFile = new File(["x"], "notes.txt", { type: "text/plain" });
-    await fireEvent.change(screen.getByLabelText(/question image/i), {
+    await fireEvent.change(screen.getByLabelText(/question media/i), {
       target: { files: [badFile] },
     });
 
     expect(screen.getByRole("alert").textContent).toContain(
-      "Only PNG, JPEG, GIF, and WebP images are supported.",
+      "Only supported image, audio, and video files are allowed.",
     );
     expect(screen.queryByRole("img")).toBeNull();
 
@@ -351,10 +394,10 @@ describe("BoardClueModal", () => {
     expect(payload.questionImage).toBeUndefined();
   });
 
-  test("readImageFileAsClueMedia failure shows an error and does not update image state", async () => {
+  test("readFileAsClueMedia failure shows an error and does not update image state", async () => {
     const onSave = vi.fn();
     const spy = vi
-      .spyOn(media, "readImageFileAsClueMedia")
+      .spyOn(media, "readFileAsClueMedia")
       .mockRejectedValueOnce(new Error("read failed"));
 
     try {
@@ -368,12 +411,12 @@ describe("BoardClueModal", () => {
       });
 
       const file = new File(["x"], "ok.png", { type: "image/png" });
-      await fireEvent.change(screen.getByLabelText(/question image/i), {
+      await fireEvent.change(screen.getByLabelText(/question media/i), {
         target: { files: [file] },
       });
 
       await waitFor(() => {
-        expect(screen.getByRole("alert").textContent).toContain("Failed to read the image.");
+        expect(screen.getByRole("alert").textContent).toContain("Failed to read the media.");
       });
 
       expect(screen.queryByRole("img", { name: "ok.png" })).toBeNull();
@@ -440,7 +483,7 @@ describe("BoardClueModal", () => {
       finishRead = resolve;
     });
 
-    const spy = vi.spyOn(media, "readImageFileAsClueMedia").mockReturnValueOnce(readPromise);
+    const spy = vi.spyOn(media, "readFileAsClueMedia").mockReturnValueOnce(readPromise);
 
     try {
       render(BoardClueModal, {
@@ -453,7 +496,7 @@ describe("BoardClueModal", () => {
       });
 
       const file = new File(["x"], "slow.png", { type: "image/png" });
-      await fireEvent.change(screen.getByLabelText(/question image/i), {
+      await fireEvent.change(screen.getByLabelText(/question media/i), {
         target: { files: [file] },
       });
 

@@ -20,6 +20,18 @@ const sampleAnswerImage: ClueMedia = {
   url: "https://example.com/a.png",
 };
 
+const sampleQuestionAudio: ClueMedia = {
+  kind: "audio",
+  fileName: "q.mp3",
+  url: "https://example.com/q.mp3",
+};
+
+const sampleAnswerVideo: ClueMedia = {
+  kind: "video",
+  fileName: "a.mp4",
+  url: "https://example.com/a.mp4",
+};
+
 function singleClueBoard(clue: BoardDefinition["clues"][number]): BoardDefinition {
   return {
     title: "Quiz",
@@ -180,11 +192,11 @@ describe("validateBoardDefinition", () => {
       expect.arrayContaining([
         {
           field: "clues[2].prompt",
-          message: "Clue question text or image is required.",
+          message: "Clue question text or media is required.",
         },
         {
           field: "clues[2].response",
-          message: "Clue answer text or image is required.",
+          message: "Clue answer text or media is required.",
         },
       ]),
     );
@@ -230,6 +242,32 @@ describe("validateBoardDefinition", () => {
     expect(validateBoardDefinition(board)).toEqual([]);
   });
 
+  test("accepts audio-only question side with text answer", () => {
+    const board = singleClueBoard({
+      id: "c1",
+      rowIndex: 0,
+      columnIndex: 0,
+      value: 100,
+      prompt: "",
+      response: "Text answer",
+      questionMedia: sampleQuestionAudio,
+    });
+    expect(validateBoardDefinition(board)).toEqual([]);
+  });
+
+  test("accepts text question with video-only answer side", () => {
+    const board = singleClueBoard({
+      id: "c1",
+      rowIndex: 0,
+      columnIndex: 0,
+      value: 100,
+      prompt: "Text question",
+      response: "",
+      answerMedia: sampleAnswerVideo,
+    });
+    expect(validateBoardDefinition(board)).toEqual([]);
+  });
+
   test("rejects clue with no question text and no question image", () => {
     const board = singleClueBoard({
       id: "c1",
@@ -242,7 +280,7 @@ describe("validateBoardDefinition", () => {
     });
     expect(validateBoardDefinition(board)).toContainEqual({
       field: "clues[0].prompt",
-      message: "Clue question text or image is required.",
+      message: "Clue question text or media is required.",
     });
   });
 
@@ -258,7 +296,7 @@ describe("validateBoardDefinition", () => {
     });
     expect(validateBoardDefinition(board)).toContainEqual({
       field: "clues[0].response",
-      message: "Clue answer text or image is required.",
+      message: "Clue answer text or media is required.",
     });
   });
 
@@ -289,7 +327,7 @@ describe("validateBoardDefinition", () => {
 
     expect(validateBoardDefinition(board)).toContainEqual({
       field: "clues[0].prompt",
-      message: "Clue question text or image is required.",
+      message: "Clue question text or media is required.",
     });
   });
 
@@ -365,12 +403,12 @@ describe("validateBoardDefinition", () => {
       value: 100,
       prompt: "",
       response: "A",
-      questionMedia: { kind: "video", fileName: "x", url: "https://x" } as unknown as ClueMedia,
+      questionMedia: { kind: "document", fileName: "x", url: "https://x" } as unknown as ClueMedia,
     });
 
     expect(validateBoardDefinition(board)).toContainEqual({
       field: "clues[0].questionMedia.kind",
-      message: 'Image media kind must be "image".',
+      message: 'Media kind must be "image", "audio", or "video".',
     });
   });
 
@@ -387,7 +425,7 @@ describe("validateBoardDefinition", () => {
 
     expect(validateBoardDefinition(board)).toContainEqual({
       field: "clues[0].answerMedia.fileName",
-      message: "Image media fileName is required.",
+      message: "Media fileName is required.",
     });
   });
 });
@@ -531,7 +569,24 @@ describe("validateBoardDefinitionForEditor", () => {
 
     expect(validateBoardDefinitionForEditor(base)).toContainEqual({
       field: "clues[0].questionMedia.url",
-      message: "Image media url is required.",
+      message: "Media url is required.",
     });
+  });
+
+  test("accepts audio and video media in editor drafts", () => {
+    const base = createBoardDefinition({ rowCount: 1, columnCount: 1 });
+    const first = base.clues[0];
+
+    if (first === undefined) {
+      throw new Error("Expected first clue.");
+    }
+
+    base.clues[0] = {
+      ...first,
+      questionMedia: sampleQuestionAudio,
+      answerMedia: sampleAnswerVideo,
+    };
+
+    expect(validateBoardDefinitionForEditor(base)).toEqual([]);
   });
 });

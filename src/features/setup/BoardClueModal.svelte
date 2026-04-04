@@ -12,7 +12,7 @@
 <script lang="ts">
   import { tick } from "svelte";
 
-  import { isSupportedImageFile, readImageFileAsClueMedia } from "../shared/media";
+  import { isSupportedClueMediaFile, readFileAsClueMedia } from "../shared/media";
 
   type Props = {
     isOpen: boolean;
@@ -27,10 +27,12 @@
     prompt: "",
     response: "",
   });
-  let imageError = $state("");
-  let pendingImageReads = $state(0);
+  let mediaError = $state("");
+  let pendingMediaReads = $state(0);
   let modalEpoch = 0;
   let dialogPanelEl = $state<HTMLDivElement | null>(null);
+  const mediaInputAccept =
+    "image/png,image/jpeg,image/gif,image/webp,audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/webm,video/mp4,video/ogg,video/quicktime,video/webm";
 
   $effect(() => {
     if (!isOpen) {
@@ -45,7 +47,7 @@
       questionImage: draftClue.questionImage,
       answerImage: draftClue.answerImage,
     };
-    imageError = "";
+    mediaError = "";
 
     void tick().then(() => {
       dialogPanelEl?.focus();
@@ -57,7 +59,7 @@
   }
 
   function handleSave(): void {
-    if (pendingImageReads > 0) {
+    if (pendingMediaReads > 0) {
       return;
     }
 
@@ -87,20 +89,20 @@
 
     if (file === undefined) {
       localDraft = { ...localDraft, questionImage: undefined };
-      imageError = "";
+      mediaError = "";
       return;
     }
 
-    if (!isSupportedImageFile(file)) {
-      imageError = "Only PNG, JPEG, GIF, and WebP images are supported.";
+    if (!isSupportedClueMediaFile(file)) {
+      mediaError = "Only supported image, audio, and video files are allowed.";
       return;
     }
 
-    imageError = "";
-    pendingImageReads += 1;
+    mediaError = "";
+    pendingMediaReads += 1;
 
     try {
-      const media = await readImageFileAsClueMedia(file);
+      const media = await readFileAsClueMedia(file);
 
       if (epoch !== modalEpoch) {
         return;
@@ -109,10 +111,10 @@
       localDraft = { ...localDraft, questionImage: media };
     } catch {
       if (epoch === modalEpoch) {
-        imageError = "Failed to read the image.";
+        mediaError = "Failed to read the media.";
       }
     } finally {
-      pendingImageReads -= 1;
+      pendingMediaReads -= 1;
     }
   }
 
@@ -122,20 +124,20 @@
 
     if (file === undefined) {
       localDraft = { ...localDraft, answerImage: undefined };
-      imageError = "";
+      mediaError = "";
       return;
     }
 
-    if (!isSupportedImageFile(file)) {
-      imageError = "Only PNG, JPEG, GIF, and WebP images are supported.";
+    if (!isSupportedClueMediaFile(file)) {
+      mediaError = "Only supported image, audio, and video files are allowed.";
       return;
     }
 
-    imageError = "";
-    pendingImageReads += 1;
+    mediaError = "";
+    pendingMediaReads += 1;
 
     try {
-      const media = await readImageFileAsClueMedia(file);
+      const media = await readFileAsClueMedia(file);
 
       if (epoch !== modalEpoch) {
         return;
@@ -144,10 +146,10 @@
       localDraft = { ...localDraft, answerImage: media };
     } catch {
       if (epoch === modalEpoch) {
-        imageError = "Failed to read the image.";
+        mediaError = "Failed to read the media.";
       }
     } finally {
-      pendingImageReads -= 1;
+      pendingMediaReads -= 1;
     }
   }
 </script>
@@ -179,46 +181,60 @@
       </label>
 
       <div class="board-clue-modal__field">
-        <span id="question-image-label">Question image (optional)</span>
+        <span id="question-image-label">Question media (optional)</span>
         <input
           type="file"
-          accept="image/png,image/jpeg,image/gif,image/webp"
+          accept={mediaInputAccept}
           aria-labelledby="question-image-label"
           onchange={(event) => void handleQuestionImageChange((event.currentTarget as HTMLInputElement).files)}
         />
         {#if localDraft.questionImage}
-          <img
-            class="board-clue-modal__preview"
-            src={localDraft.questionImage.url}
-            alt={localDraft.questionImage.fileName}
-          />
+          {#if localDraft.questionImage.kind === "image"}
+            <img
+              class="board-clue-modal__preview"
+              src={localDraft.questionImage.url}
+              alt={localDraft.questionImage.fileName}
+            />
+          {:else if localDraft.questionImage.kind === "audio"}
+            <audio class="board-clue-modal__media-preview" controls src={localDraft.questionImage.url}></audio>
+          {:else if localDraft.questionImage.kind === "video"}
+            <!-- svelte-ignore a11y_media_has_caption -->
+            <video class="board-clue-modal__media-preview" controls src={localDraft.questionImage.url}></video>
+          {/if}
         {/if}
       </div>
 
       <div class="board-clue-modal__field">
-        <span id="answer-image-label">Answer image (optional)</span>
+        <span id="answer-image-label">Answer media (optional)</span>
         <input
           type="file"
-          accept="image/png,image/jpeg,image/gif,image/webp"
+          accept={mediaInputAccept}
           aria-labelledby="answer-image-label"
           onchange={(event) => void handleAnswerImageChange((event.currentTarget as HTMLInputElement).files)}
         />
         {#if localDraft.answerImage}
-          <img
-            class="board-clue-modal__preview"
-            src={localDraft.answerImage.url}
-            alt={localDraft.answerImage.fileName}
-          />
+          {#if localDraft.answerImage.kind === "image"}
+            <img
+              class="board-clue-modal__preview"
+              src={localDraft.answerImage.url}
+              alt={localDraft.answerImage.fileName}
+            />
+          {:else if localDraft.answerImage.kind === "audio"}
+            <audio class="board-clue-modal__media-preview" controls src={localDraft.answerImage.url}></audio>
+          {:else if localDraft.answerImage.kind === "video"}
+            <!-- svelte-ignore a11y_media_has_caption -->
+            <video class="board-clue-modal__media-preview" controls src={localDraft.answerImage.url}></video>
+          {/if}
         {/if}
       </div>
 
-      {#if imageError}
-        <p class="board-clue-modal__error" role="alert">{imageError}</p>
+      {#if mediaError}
+        <p class="board-clue-modal__error" role="alert">{mediaError}</p>
       {/if}
 
       <div class="board-clue-modal__actions">
         <button type="button" onclick={handleCancel}>Cancel</button>
-        <button type="button" disabled={pendingImageReads > 0} onclick={handleSave}>Save</button>
+        <button type="button" disabled={pendingMediaReads > 0} onclick={handleSave}>Save</button>
       </div>
     </div>
   </div>
@@ -297,6 +313,13 @@
     object-fit: cover;
     border: 1px solid #475569;
     border-radius: 2px;
+  }
+
+  .board-clue-modal__media-preview {
+    width: min(100%, 16rem);
+    border: 1px solid #475569;
+    border-radius: 2px;
+    background: #020617;
   }
 
   .board-clue-modal__error {

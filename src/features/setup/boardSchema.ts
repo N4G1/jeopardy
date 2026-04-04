@@ -1,9 +1,23 @@
-type ClueMedia = {
+type ImageClueMedia = {
   kind: "image";
   fileName: string;
   url: string;
   altText?: string;
 };
+
+type AudioClueMedia = {
+  kind: "audio";
+  fileName: string;
+  url: string;
+};
+
+type VideoClueMedia = {
+  kind: "video";
+  fileName: string;
+  url: string;
+};
+
+type ClueMedia = ImageClueMedia | AudioClueMedia | VideoClueMedia;
 
 type BoardClueDefinition = {
   id: string;
@@ -33,6 +47,10 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function isSupportedClueMediaKind(kind: unknown): kind is ClueMedia["kind"] {
+  return kind === "image" || kind === "audio" || kind === "video";
+}
+
 /** Returns issues for a single `ClueMedia` value; empty list when `media` is undefined or null. */
 function validateClueMediaShape(media: unknown, fieldPath: string): BoardValidationIssue[] {
   const issues: BoardValidationIssue[] = [];
@@ -44,33 +62,33 @@ function validateClueMediaShape(media: unknown, fieldPath: string): BoardValidat
   if (!isPlainObject(media)) {
     issues.push({
       field: fieldPath,
-      message: "Image media must be an object.",
+      message: "Media must be an object.",
     });
     return issues;
   }
 
-  if (media.kind !== "image") {
+  if (!isSupportedClueMediaKind(media.kind)) {
     issues.push({
       field: `${fieldPath}.kind`,
-      message: 'Image media kind must be "image".',
+      message: 'Media kind must be "image", "audio", or "video".',
     });
   }
 
   if (typeof media.fileName !== "string" || media.fileName.trim().length === 0) {
     issues.push({
       field: `${fieldPath}.fileName`,
-      message: "Image media fileName is required.",
+      message: "Media fileName is required.",
     });
   }
 
   if (typeof media.url !== "string" || media.url.trim().length === 0) {
     issues.push({
       field: `${fieldPath}.url`,
-      message: "Image media url is required.",
+      message: "Media url is required.",
     });
   }
 
-  if (media.altText !== undefined && typeof media.altText !== "string") {
+  if (media.kind === "image" && media.altText !== undefined && typeof media.altText !== "string") {
     issues.push({
       field: `${fieldPath}.altText`,
       message: "Image media altText must be a string when present.",
@@ -321,7 +339,7 @@ function appendPlayableClueContentIssues(
   if (!promptTextOk && !questionMediaOk && !hasQuestionMedia) {
     issues.push({
       field: `clues[${clueIndex}].prompt`,
-      message: "Clue question text or image is required.",
+      message: "Clue question text or media is required.",
     });
   }
 
@@ -340,7 +358,7 @@ function appendPlayableClueContentIssues(
   if (!responseTextOk && !answerMediaOk && !hasAnswerMedia) {
     issues.push({
       field: `clues[${clueIndex}].response`,
-      message: "Clue answer text or image is required.",
+      message: "Clue answer text or media is required.",
     });
   }
 }

@@ -481,6 +481,11 @@
                   class="active-clue__image"
                   src={sessionView.activeClue.questionMedia.url}
                 />
+              {:else if sessionView.activeClue.questionMedia?.kind === "audio"}
+                <audio class="active-clue__media" controls src={sessionView.activeClue.questionMedia.url}></audio>
+              {:else if sessionView.activeClue.questionMedia?.kind === "video"}
+                <!-- svelte-ignore a11y_media_has_caption -->
+                <video class="active-clue__media" controls src={sessionView.activeClue.questionMedia.url}></video>
               {/if}
             </div>
           </section>
@@ -498,6 +503,11 @@
                   class="active-clue__image"
                   src={activeHostClueDefinition.answerMedia.url}
                 />
+              {:else if activeHostClueDefinition?.answerMedia?.kind === "audio"}
+                <audio class="active-clue__media" controls src={activeHostClueDefinition.answerMedia.url}></audio>
+              {:else if activeHostClueDefinition?.answerMedia?.kind === "video"}
+                <!-- svelte-ignore a11y_media_has_caption -->
+                <video class="active-clue__media" controls src={activeHostClueDefinition.answerMedia.url}></video>
               {/if}
             </div>
           </section>
@@ -767,6 +777,11 @@
     max-width: min(100%, 42rem);
     max-height: 22rem;
     border-radius: 0;
+  }
+
+  .active-clue__media {
+    max-width: min(100%, 42rem);
+    max-height: 22rem;
   }
 
   @media (max-width: 900px) {

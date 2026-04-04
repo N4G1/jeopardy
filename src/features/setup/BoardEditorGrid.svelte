@@ -97,7 +97,10 @@
       return text;
     }
     if (clue.questionMedia !== undefined) {
-      return clue.questionMedia.altText?.trim() || "Image question";
+      if (clue.questionMedia.kind === "image") {
+        return clue.questionMedia.altText?.trim() || "Image question";
+      }
+      return `${clue.questionMedia.kind} question`;
     }
     return "";
   }
@@ -108,7 +111,10 @@
       return text;
     }
     if (clue.answerMedia !== undefined) {
-      return clue.answerMedia.altText?.trim() || "Image answer";
+      if (clue.answerMedia.kind === "image") {
+        return clue.answerMedia.altText?.trim() || "Image answer";
+      }
+      return `${clue.answerMedia.kind} answer`;
     }
     return "";
   }
@@ -379,12 +385,25 @@
                           <span class="board-editor-grid__clue-preview-text">{clue.prompt.trim()}</span>
                         {/if}
                         {#if clue.questionMedia !== undefined}
-                          <img
-                            class="board-editor-grid__clue-preview-img"
-                            src={clue.questionMedia.url}
-                            alt={clue.questionMedia.altText?.trim() || ""}
-                            draggable="false"
-                          />
+                          {#if clue.questionMedia.kind === "image"}
+                            <img
+                              class="board-editor-grid__clue-preview-img"
+                              src={clue.questionMedia.url}
+                              alt={clue.questionMedia.altText?.trim() || ""}
+                              draggable="false"
+                            />
+                          {:else if clue.questionMedia.kind === "audio"}
+                            <audio
+                              class="board-editor-grid__clue-preview-media"
+                              src={clue.questionMedia.url}
+                            ></audio>
+                          {:else if clue.questionMedia.kind === "video"}
+                            <!-- svelte-ignore a11y_media_has_caption -->
+                            <video
+                              class="board-editor-grid__clue-preview-media"
+                              src={clue.questionMedia.url}
+                            ></video>
+                          {/if}
                         {/if}
                       </span>
                     {:else}
@@ -393,12 +412,25 @@
                           <span class="board-editor-grid__clue-preview-text">{clue.response.trim()}</span>
                         {/if}
                         {#if clue.answerMedia !== undefined}
-                          <img
-                            class="board-editor-grid__clue-preview-img"
-                            src={clue.answerMedia.url}
-                            alt={clue.answerMedia.altText?.trim() || ""}
-                            draggable="false"
-                          />
+                          {#if clue.answerMedia.kind === "image"}
+                            <img
+                              class="board-editor-grid__clue-preview-img"
+                              src={clue.answerMedia.url}
+                              alt={clue.answerMedia.altText?.trim() || ""}
+                              draggable="false"
+                            />
+                          {:else if clue.answerMedia.kind === "audio"}
+                            <audio
+                              class="board-editor-grid__clue-preview-media"
+                              src={clue.answerMedia.url}
+                            ></audio>
+                          {:else if clue.answerMedia.kind === "video"}
+                            <!-- svelte-ignore a11y_media_has_caption -->
+                            <video
+                              class="board-editor-grid__clue-preview-media"
+                              src={clue.answerMedia.url}
+                            ></video>
+                          {/if}
                         {/if}
                       </span>
                     {/if}
@@ -657,6 +689,11 @@
     max-height: 3rem;
     object-fit: contain;
     display: block;
+  }
+
+  .board-editor-grid__clue-preview-media {
+    max-width: 100%;
+    max-height: 3rem;
   }
 
   .board-editor-grid__resize {

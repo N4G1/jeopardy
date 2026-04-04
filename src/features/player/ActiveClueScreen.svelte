@@ -56,6 +56,11 @@
             class="clue-screen__image"
             src={clue.questionMedia.url}
           />
+        {:else if clue.questionMedia?.kind === "audio"}
+          <audio class="clue-screen__media" controls src={clue.questionMedia.url}></audio>
+        {:else if clue.questionMedia?.kind === "video"}
+          <!-- svelte-ignore a11y_media_has_caption -->
+          <video class="clue-screen__media" controls src={clue.questionMedia.url}></video>
         {/if}
       </div>
     </section>
@@ -72,6 +77,11 @@
                 class="clue-screen__image"
                 src={clue.answerMedia.url}
               />
+            {:else if clue.answerMedia?.kind === "audio"}
+              <audio class="clue-screen__media" controls src={clue.answerMedia.url}></audio>
+            {:else if clue.answerMedia?.kind === "video"}
+              <!-- svelte-ignore a11y_media_has_caption -->
+              <video class="clue-screen__media" controls src={clue.answerMedia.url}></video>
             {/if}
           </div>
         </div>
@@ -164,6 +174,11 @@
     max-width: min(100%, 42rem);
     max-height: 22rem;
     border-radius: 0;
+  }
+
+  .clue-screen__media {
+    max-width: min(100%, 42rem);
+    max-height: 22rem;
   }
 
   .clue-screen__button {
