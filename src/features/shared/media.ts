@@ -15,33 +15,38 @@ const supportedVideoMimeTypes = new Set([
   "video/webm",
 ]);
 
-function isSupportedImageFile(file: Pick<File, "type">): boolean {
-  return supportedImageMimeTypes.has(file.type);
-}
-
-function isSupportedAudioFile(file: Pick<File, "type">): boolean {
-  return supportedAudioMimeTypes.has(file.type);
-}
-
-function isSupportedVideoFile(file: Pick<File, "type">): boolean {
-  return supportedVideoMimeTypes.has(file.type);
-}
-
-function isSupportedClueMediaFile(file: Pick<File, "type">): boolean {
-  return isSupportedImageFile(file) || isSupportedAudioFile(file) || isSupportedVideoFile(file);
-}
-
-function getClueMediaKind(file: Pick<File, "type">): ClueMedia["kind"] | undefined {
-  if (isSupportedImageFile(file)) {
-    return "image";
+function getInferredMimeType(
+  file: Pick<File, "type" | "name">,
+): { kind: ClueMedia["kind"]; mimeType: string } | undefined {
+  if (supportedImageMimeTypes.has(file.type)) {
+    return { kind: "image", mimeType: file.type };
   }
-  if (isSupportedAudioFile(file)) {
-    return "audio";
+
+  if (supportedAudioMimeTypes.has(file.type)) {
+    return { kind: "audio", mimeType: file.type };
   }
-  if (isSupportedVideoFile(file)) {
-    return "video";
+
+  if (supportedVideoMimeTypes.has(file.type)) {
+    return { kind: "video", mimeType: file.type };
   }
+
   return undefined;
+}
+
+function isSupportedImageFile(file: Pick<File, "type" | "name">): boolean {
+  return getInferredMimeType(file)?.kind === "image";
+}
+
+function isSupportedAudioFile(file: Pick<File, "type" | "name">): boolean {
+  return getInferredMimeType(file)?.kind === "audio";
+}
+
+function isSupportedVideoFile(file: Pick<File, "type" | "name">): boolean {
+  return getInferredMimeType(file)?.kind === "video";
+}
+
+function isSupportedClueMediaFile(file: Pick<File, "type" | "name">): boolean {
+  return getInferredMimeType(file) !== undefined;
 }
 
 function readImageFileAsClueMedia(file: File): Promise<ClueMedia> {
@@ -50,9 +55,9 @@ function readImageFileAsClueMedia(file: File): Promise<ClueMedia> {
 
 function readFileAsClueMedia(file: File): Promise<ClueMedia> {
   return new Promise((resolve, reject) => {
-    const kind = getClueMediaKind(file);
+    const inferredMime = getInferredMimeType(file);
 
-    if (kind === undefined) {
+    if (inferredMime === undefined) {
       reject(new Error("Failed to read media file."));
       return;
     }
@@ -65,9 +70,9 @@ function readFileAsClueMedia(file: File): Promise<ClueMedia> {
         return;
       }
 
-      if (kind === "image") {
+      if (inferredMime.kind === "image") {
         resolve({
-          kind,
+          kind: inferredMime.kind,
           fileName: file.name,
           url: reader.result,
           altText: file.name,
@@ -76,7 +81,7 @@ function readFileAsClueMedia(file: File): Promise<ClueMedia> {
       }
 
       resolve({
-        kind,
+        kind: inferredMime.kind,
         fileName: file.name,
         url: reader.result,
       });

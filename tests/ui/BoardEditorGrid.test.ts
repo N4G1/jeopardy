@@ -441,7 +441,7 @@ describe("BoardEditorGrid", () => {
       expect(imgs[0]?.getAttribute("alt")).toBe("A side");
     });
 
-    test("audio question media and video answer media render as media previews", async () => {
+    test("audio question media shows a visible label and video answer media renders as preview", async () => {
       const boardDefinition = patchClue(
         createBoardDefinition({ rowCount: 1, columnCount: 1 }),
         0,
@@ -464,7 +464,7 @@ describe("BoardEditorGrid", () => {
       renderBoard(boardDefinition);
 
       const tile = clueTile(1, 1);
-      expect(tile.querySelector("audio")).toBeTruthy();
+      expect(tile.querySelector(".board-editor-grid__clue-audio-badge")).toBeTruthy();
 
       await fireEvent.mouseEnter(tile);
       await tick();

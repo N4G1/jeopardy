@@ -40,6 +40,13 @@ describe("isSupportedClueMediaFile", () => {
       false,
     );
   });
+
+  test("rejects supported-looking files when mime type is missing", () => {
+    expect(isSupportedClueMediaFile(new File(["mp4"], "clip.mp4", { type: "" }))).toBe(false);
+    expect(isSupportedClueMediaFile(new File(["mov"], "clip.mov", { type: "" }))).toBe(false);
+    expect(isSupportedClueMediaFile(new File(["mp3"], "sound.mp3", { type: "" }))).toBe(false);
+    expect(isSupportedClueMediaFile(new File(["png"], "photo.png", { type: "" }))).toBe(false);
+  });
 });
 
 describe("readFileAsClueMedia", () => {
@@ -61,5 +68,17 @@ describe("readFileAsClueMedia", () => {
       fileName: "clip.mp4",
     });
     expect(media.url.startsWith("data:video/mp4")).toBe(true);
+  });
+
+  test("rejects mp4 when mime is missing", async () => {
+    await expect(readFileAsClueMedia(new File(["mp4"], "clip.mp4", { type: "" }))).rejects.toThrow(
+      "Failed to read media file.",
+    );
+  });
+
+  test("rejects mov when mime is missing", async () => {
+    await expect(readFileAsClueMedia(new File(["mov"], "clip.mov", { type: "" }))).rejects.toThrow(
+      "Failed to read media file.",
+    );
   });
 });

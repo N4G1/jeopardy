@@ -329,6 +329,71 @@ describe("BoardClueModal", () => {
     });
   });
 
+  test("uses a left-right modal layout with separate question and answer panes", () => {
+    const { container } = render(BoardClueModal, {
+      props: {
+        isOpen: true,
+        draftClue: createDraft(),
+        onSave: vi.fn(),
+        onClose: vi.fn(),
+      },
+    });
+
+    const columns = container.querySelector(".board-clue-modal__columns");
+    const panes = container.querySelectorAll(".board-clue-modal__pane");
+
+    expect(columns).toBeTruthy();
+    expect(panes).toHaveLength(2);
+    expect(panes[0]?.textContent).toContain("Question");
+    expect(panes[1]?.textContent).toContain("Answer");
+  });
+
+  test("shows supported media and MIME guidance next to both upload inputs", () => {
+    render(BoardClueModal, {
+      props: {
+        isOpen: true,
+        draftClue: createDraft(),
+        onSave: vi.fn(),
+        onClose: vi.fn(),
+      },
+    });
+
+    const guidance = screen.getAllByText(
+      /supported: png, jpg\/jpeg, gif, webp, mp3, m4a, ogg, wav, webm, mp4, mov, ogv\. requires a browser-detected supported mime type\./i,
+    );
+
+    expect(guidance).toHaveLength(2);
+  });
+
+  test("renders playable question and answer media previews inside their own panes", () => {
+    const questionAudio: ClueMedia = {
+      kind: "audio",
+      fileName: "question.mp3",
+      url: "data:audio/mpeg;base64,QQ==",
+    };
+    const answerVideo: ClueMedia = {
+      kind: "video",
+      fileName: "answer.mp4",
+      url: "data:video/mp4;base64,QQ==",
+    };
+
+    const { container } = render(BoardClueModal, {
+      props: {
+        isOpen: true,
+        draftClue: createDraft({ questionImage: questionAudio, answerImage: answerVideo }),
+        onSave: vi.fn(),
+        onClose: vi.fn(),
+      },
+    });
+
+    const panes = container.querySelectorAll(".board-clue-modal__pane");
+    const questionPane = panes[0];
+    const answerPane = panes[1];
+
+    expect(questionPane?.querySelector("audio[controls]")).toBeTruthy();
+    expect(answerPane?.querySelector("video[controls]")).toBeTruthy();
+  });
+
   test("saved payload merges updated text with uploaded image fields", async () => {
     const onSave = vi.fn();
     const file = new File(["z"], "z.png", { type: "image/png" });

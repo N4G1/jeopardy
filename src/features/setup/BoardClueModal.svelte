@@ -34,6 +34,10 @@
   const mediaInputAccept =
     "image/png,image/jpeg,image/gif,image/webp,audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/webm,video/mp4,video/ogg,video/quicktime,video/webm";
 
+  function previewTitle(media: ClueMedia): string {
+    return media.fileName;
+  }
+
   $effect(() => {
     if (!isOpen) {
       return;
@@ -170,62 +174,104 @@
     >
       <h2 id="board-clue-modal-title" class="board-clue-modal__title">Edit clue</h2>
 
-      <label class="board-clue-modal__field">
-        <span>Question text</span>
-        <textarea bind:value={localDraft.prompt} rows="3"></textarea>
-      </label>
+      <div class="board-clue-modal__columns">
+        <section class="board-clue-modal__pane" aria-label="Question pane">
+          <h3 class="board-clue-modal__pane-title">Question</h3>
 
-      <label class="board-clue-modal__field">
-        <span>Answer text</span>
-        <textarea bind:value={localDraft.response} rows="3"></textarea>
-      </label>
+          <label class="board-clue-modal__field">
+            <span>Question text</span>
+            <textarea bind:value={localDraft.prompt} rows="10"></textarea>
+          </label>
 
-      <div class="board-clue-modal__field">
-        <span id="question-image-label">Question media (optional)</span>
-        <input
-          type="file"
-          accept={mediaInputAccept}
-          aria-labelledby="question-image-label"
-          onchange={(event) => void handleQuestionImageChange((event.currentTarget as HTMLInputElement).files)}
-        />
-        {#if localDraft.questionImage}
-          {#if localDraft.questionImage.kind === "image"}
-            <img
-              class="board-clue-modal__preview"
-              src={localDraft.questionImage.url}
-              alt={localDraft.questionImage.fileName}
+          <div class="board-clue-modal__field">
+            <span id="question-image-label">Question media (optional)</span>
+            <input
+              type="file"
+              accept={mediaInputAccept}
+              aria-labelledby="question-image-label"
+              onchange={(event) =>
+                void handleQuestionImageChange((event.currentTarget as HTMLInputElement).files)}
             />
-          {:else if localDraft.questionImage.kind === "audio"}
-            <audio class="board-clue-modal__media-preview" controls src={localDraft.questionImage.url}></audio>
-          {:else if localDraft.questionImage.kind === "video"}
-            <!-- svelte-ignore a11y_media_has_caption -->
-            <video class="board-clue-modal__media-preview" controls src={localDraft.questionImage.url}></video>
-          {/if}
-        {/if}
-      </div>
+            <p class="board-clue-modal__hint">
+              Supported: PNG, JPG/JPEG, GIF, WebP, MP3, M4A, OGG, WAV, WEBM, MP4, MOV, OGV.
+              Requires a browser-detected supported MIME type.
+            </p>
+            {#if localDraft.questionImage}
+              <div class="board-clue-modal__preview-wrap">
+                <p class="board-clue-modal__preview-title">{previewTitle(localDraft.questionImage)}</p>
+                {#if localDraft.questionImage.kind === "image"}
+                  <img
+                    class="board-clue-modal__preview"
+                    src={localDraft.questionImage.url}
+                    alt={localDraft.questionImage.fileName}
+                  />
+                {:else if localDraft.questionImage.kind === "audio"}
+                  <audio
+                    class="board-clue-modal__media-preview"
+                    controls
+                    src={localDraft.questionImage.url}
+                  ></audio>
+                {:else if localDraft.questionImage.kind === "video"}
+                  <!-- svelte-ignore a11y_media_has_caption -->
+                  <video
+                    class="board-clue-modal__media-preview"
+                    controls
+                    src={localDraft.questionImage.url}
+                  ></video>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </section>
 
-      <div class="board-clue-modal__field">
-        <span id="answer-image-label">Answer media (optional)</span>
-        <input
-          type="file"
-          accept={mediaInputAccept}
-          aria-labelledby="answer-image-label"
-          onchange={(event) => void handleAnswerImageChange((event.currentTarget as HTMLInputElement).files)}
-        />
-        {#if localDraft.answerImage}
-          {#if localDraft.answerImage.kind === "image"}
-            <img
-              class="board-clue-modal__preview"
-              src={localDraft.answerImage.url}
-              alt={localDraft.answerImage.fileName}
+        <section class="board-clue-modal__pane" aria-label="Answer pane">
+          <h3 class="board-clue-modal__pane-title">Answer</h3>
+
+          <label class="board-clue-modal__field">
+            <span>Answer text</span>
+            <textarea bind:value={localDraft.response} rows="10"></textarea>
+          </label>
+
+          <div class="board-clue-modal__field">
+            <span id="answer-image-label">Answer media (optional)</span>
+            <input
+              type="file"
+              accept={mediaInputAccept}
+              aria-labelledby="answer-image-label"
+              onchange={(event) =>
+                void handleAnswerImageChange((event.currentTarget as HTMLInputElement).files)}
             />
-          {:else if localDraft.answerImage.kind === "audio"}
-            <audio class="board-clue-modal__media-preview" controls src={localDraft.answerImage.url}></audio>
-          {:else if localDraft.answerImage.kind === "video"}
-            <!-- svelte-ignore a11y_media_has_caption -->
-            <video class="board-clue-modal__media-preview" controls src={localDraft.answerImage.url}></video>
-          {/if}
-        {/if}
+            <p class="board-clue-modal__hint">
+              Supported: PNG, JPG/JPEG, GIF, WebP, MP3, M4A, OGG, WAV, WEBM, MP4, MOV, OGV.
+              Requires a browser-detected supported MIME type.
+            </p>
+            {#if localDraft.answerImage}
+              <div class="board-clue-modal__preview-wrap">
+                <p class="board-clue-modal__preview-title">{previewTitle(localDraft.answerImage)}</p>
+                {#if localDraft.answerImage.kind === "image"}
+                  <img
+                    class="board-clue-modal__preview"
+                    src={localDraft.answerImage.url}
+                    alt={localDraft.answerImage.fileName}
+                  />
+                {:else if localDraft.answerImage.kind === "audio"}
+                  <audio
+                    class="board-clue-modal__media-preview"
+                    controls
+                    src={localDraft.answerImage.url}
+                  ></audio>
+                {:else if localDraft.answerImage.kind === "video"}
+                  <!-- svelte-ignore a11y_media_has_caption -->
+                  <video
+                    class="board-clue-modal__media-preview"
+                    controls
+                    src={localDraft.answerImage.url}
+                  ></video>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </section>
       </div>
 
       {#if mediaError}
@@ -264,7 +310,7 @@
   .board-clue-modal__panel {
     position: relative;
     z-index: 1;
-    width: min(32rem, 100%);
+    width: min(64rem, 100%);
     max-height: min(90vh, 100%);
     overflow: auto;
     display: grid;
@@ -288,6 +334,26 @@
     font-size: 0.875rem;
   }
 
+  .board-clue-modal__columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .board-clue-modal__pane {
+    display: grid;
+    align-content: start;
+    gap: 0.85rem;
+    min-width: 0;
+  }
+
+  .board-clue-modal__pane-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+
   .board-clue-modal__field span {
     color: #cbd5e1;
   }
@@ -300,6 +366,8 @@
     background: #0f172a;
     color: inherit;
     resize: vertical;
+    min-height: 4rem;
+    height: 5rem;
   }
 
   .board-clue-modal__field input[type="file"] {
@@ -308,18 +376,38 @@
   }
 
   .board-clue-modal__preview {
-    width: 6rem;
-    height: 6rem;
-    object-fit: cover;
+    width: 100%;
+    max-height: 18rem;
+    object-fit: contain;
     border: 1px solid #475569;
     border-radius: 2px;
   }
 
   .board-clue-modal__media-preview {
-    width: min(100%, 16rem);
+    width: 100%;
+    max-height: 18rem;
     border: 1px solid #475569;
     border-radius: 2px;
     background: #020617;
+  }
+
+  .board-clue-modal__preview-wrap {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .board-clue-modal__preview-title {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    word-break: break-word;
+  }
+
+  .board-clue-modal__hint {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: #94a3b8;
   }
 
   .board-clue-modal__error {
@@ -356,5 +444,11 @@
 
   .board-clue-modal__actions button:disabled:hover {
     background: #1e293b;
+  }
+
+  @media (max-width: 900px) {
+    .board-clue-modal__columns {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

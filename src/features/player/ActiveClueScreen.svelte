@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
 
+  import ClueSplitScreen from "src/features/shared/ClueSplitScreen.svelte";
   import type { ActiveClueView } from "src/realtime/messages";
 
   type Props = {
@@ -43,144 +44,32 @@
   });
 </script>
 
-<section class="clue-screen">
-  <h2 class="clue-screen__title">{clue.columnTitle} - ${clue.value}</h2>
-  <div class="clue-screen__split">
-    <section class="clue-screen__panel">
-      <h3 class="clue-screen__panel-title">Question</h3>
-      <p class="clue-screen__text">{clue.prompt}</p>
-      <div class="clue-screen__media-slot">
-        {#if clue.questionMedia?.kind === "image"}
-          <img
-            alt={clue.questionMedia.altText ?? clue.questionMedia.fileName}
-            class="clue-screen__image"
-            src={clue.questionMedia.url}
-          />
-        {:else if clue.questionMedia?.kind === "audio"}
-          <audio class="clue-screen__media" controls src={clue.questionMedia.url}></audio>
-        {:else if clue.questionMedia?.kind === "video"}
-          <!-- svelte-ignore a11y_media_has_caption -->
-          <video class="clue-screen__media" controls src={clue.questionMedia.url}></video>
-        {/if}
-      </div>
-    </section>
+<ClueSplitScreen
+  answerMedia={clue.answerMedia}
+  answerText={clue.response ?? ""}
+  answerVisible={clue.answerRevealed}
+  questionMedia={clue.questionMedia}
+  questionText={clue.prompt}
+  title={`${clue.columnTitle} - $${clue.value}`}
+>
+  {#snippet footer()}
+    <button
+      type="button"
+      class="clue-screen__button"
+      class:clue-screen__button--success={isSuccessState}
+      disabled={!canBuzz}
+      onclick={handleBuzz}
+    >
+      {buttonLabel}
+    </button>
 
-    <section class="clue-screen__panel clue-screen__panel--answer">
-      <h3 class="clue-screen__panel-title">Answer</h3>
-      {#if clue.answerRevealed}
-        <div class="clue-screen__answer-content">
-          <p class="clue-screen__text">{clue.response ?? ""}</p>
-          <div class="clue-screen__media-slot">
-            {#if clue.answerMedia?.kind === "image"}
-              <img
-                alt={clue.answerMedia.altText ?? clue.answerMedia.fileName}
-                class="clue-screen__image"
-                src={clue.answerMedia.url}
-              />
-            {:else if clue.answerMedia?.kind === "audio"}
-              <audio class="clue-screen__media" controls src={clue.answerMedia.url}></audio>
-            {:else if clue.answerMedia?.kind === "video"}
-              <!-- svelte-ignore a11y_media_has_caption -->
-              <video class="clue-screen__media" controls src={clue.answerMedia.url}></video>
-            {/if}
-          </div>
-        </div>
-      {:else}
-        <div aria-hidden="true" class="clue-screen__answer-content hidden-answer">
-          <p class="clue-screen__text"></p>
-          <div class="clue-screen__media-slot"></div>
-        </div>
-      {/if}
-    </section>
-  </div>
-
-  <button
-    type="button"
-    class="clue-screen__button"
-    class:clue-screen__button--success={isSuccessState}
-    disabled={!canBuzz}
-    onclick={handleBuzz}
-  >
-    {buttonLabel}
-  </button>
-
-  {#if statusMessage !== undefined}
-    <p class="clue-screen__status">{statusMessage}</p>
-  {/if}
-</section>
+    {#if statusMessage !== undefined}
+      <p class="clue-screen__status">{statusMessage}</p>
+    {/if}
+  {/snippet}
+</ClueSplitScreen>
 
 <style>
-  .clue-screen {
-    --gameplay-tile-font-size: clamp(1.9rem, 3vw, 2.6rem);
-    display: grid;
-    gap: 1rem;
-    border: 2px solid #0f2d52;
-    padding: 1.25rem 1.5rem;
-    background: #d7c898;
-    color: #f8fafc;
-  }
-
-  .clue-screen__title {
-    margin: 0;
-    font-size: var(--gameplay-tile-font-size);
-    line-height: 1.1;
-  }
-
-  .clue-screen__split {
-    display: grid;
-    gap: 1.5rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .clue-screen__panel {
-    min-width: 0;
-    display: grid;
-    align-content: start;
-    gap: 1rem;
-  }
-
-  .clue-screen__panel-title {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.15;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .clue-screen__text {
-    margin: 0;
-    min-height: 6rem;
-    font-size: var(--gameplay-tile-font-size);
-    line-height: 1.15;
-  }
-
-  .clue-screen__answer-content {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .hidden-answer {
-    visibility: hidden;
-  }
-
-  .clue-screen__media-slot {
-    min-height: 18rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .clue-screen__image {
-    max-width: min(100%, 42rem);
-    max-height: 22rem;
-    border-radius: 0;
-  }
-
-  .clue-screen__media {
-    max-width: min(100%, 42rem);
-    max-height: 22rem;
-  }
-
   .clue-screen__button {
     border: 2px solid #7f1d1d;
     border-radius: 0.75rem;
@@ -192,6 +81,7 @@
     font-weight: 700;
     cursor: pointer;
     border-radius: 0;
+    width: stretch;
   }
 
   .clue-screen__button--success {
@@ -215,9 +105,4 @@
     margin: 0;
   }
 
-  @media (max-width: 900px) {
-    .clue-screen__split {
-      grid-template-columns: 1fr;
-    }
-  }
 </style>

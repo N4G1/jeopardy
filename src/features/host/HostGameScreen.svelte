@@ -30,6 +30,7 @@
   } from "src/features/setup/boardStorage";
   import { copyTextToClipboard } from "src/features/shared/clipboard";
   import BoardEditor from "src/features/setup/BoardEditor.svelte";
+  import ClueSplitScreen from "src/features/shared/ClueSplitScreen.svelte";
   import EndScreen from "src/features/shared/EndScreen.svelte";
   import GameBoard from "src/features/shared/GameBoard.svelte";
   import Scoreboard from "src/features/shared/Scoreboard.svelte";
@@ -463,79 +464,39 @@
     </div>
   {:else if hostScreenStep === "clue" && sessionView?.activeClue !== undefined}
     <div class:screen__live--gameplay={isGameplayStep} class="screen__live">
-      <section class="active-clue">
-        <h2 class="active-clue__title">
-          {sessionView.activeClue.columnTitle} - ${sessionView.activeClue.value}
-        </h2>
-        <div class="active-clue__split">
-          <section class="active-clue__panel">
-            <h3 class="active-clue__panel-title">Question</h3>
-            <p class="active-clue__text">{sessionView.activeClue.prompt}</p>
-            <div class="active-clue__media-slot">
-              {#if sessionView.activeClue.questionMedia?.kind === "image"}
-                <img
-                  alt={
-                    sessionView.activeClue.questionMedia.altText ??
-                    sessionView.activeClue.questionMedia.fileName
-                  }
-                  class="active-clue__image"
-                  src={sessionView.activeClue.questionMedia.url}
-                />
-              {:else if sessionView.activeClue.questionMedia?.kind === "audio"}
-                <audio class="active-clue__media" controls src={sessionView.activeClue.questionMedia.url}></audio>
-              {:else if sessionView.activeClue.questionMedia?.kind === "video"}
-                <!-- svelte-ignore a11y_media_has_caption -->
-                <video class="active-clue__media" controls src={sessionView.activeClue.questionMedia.url}></video>
-              {/if}
+      <ClueSplitScreen
+        answerMedia={activeHostClueDefinition?.answerMedia}
+        answerText={activeHostClueDefinition?.response ?? ""}
+        answerVisible={true}
+        questionMedia={sessionView.activeClue.questionMedia}
+        questionText={sessionView.activeClue.prompt}
+        title={`${sessionView.activeClue.columnTitle} - $${sessionView.activeClue.value}`}
+      >
+        {#snippet footer()}
+          {#if sessionView.buzzWinnerPlayerId !== undefined}
+            <p class="panel__buzzed-player">
+              <strong>Buzzed player:</strong> {buzzWinnerDisplayName ?? "Unknown player"}
+            </p>
+            <div class="judge-actions">
+              <button type="button" disabled={sessionView.activeClue.answerRevealed} onclick={showAnswer}>
+                Show answer
+              </button>
+              <button type="button" onclick={() => judgeAnswer(true)}>Mark correct</button>
+              <button type="button" onclick={() => judgeAnswer(false)}>Mark incorrect</button>
+              <button type="button" onclick={rebound}>Rebound</button>
+              <button type="button" onclick={noContest}>No contest</button>
             </div>
-          </section>
-
-          <section class="active-clue__panel active-clue__panel--answer">
-            <h3 class="active-clue__panel-title">Answer</h3>
-            <p class="active-clue__text">{activeHostClueDefinition?.response ?? ""}</p>
-            <div class="active-clue__media-slot">
-              {#if activeHostClueDefinition?.answerMedia?.kind === "image"}
-                <img
-                  alt={
-                    activeHostClueDefinition.answerMedia.altText ??
-                    activeHostClueDefinition.answerMedia.fileName
-                  }
-                  class="active-clue__image"
-                  src={activeHostClueDefinition.answerMedia.url}
-                />
-              {:else if activeHostClueDefinition?.answerMedia?.kind === "audio"}
-                <audio class="active-clue__media" controls src={activeHostClueDefinition.answerMedia.url}></audio>
-              {:else if activeHostClueDefinition?.answerMedia?.kind === "video"}
-                <!-- svelte-ignore a11y_media_has_caption -->
-                <video class="active-clue__media" controls src={activeHostClueDefinition.answerMedia.url}></video>
-              {/if}
+          {:else}
+            <p>Waiting for a player to buzz in.</p>
+            <div class="judge-actions">
+              <button type="button" disabled={sessionView.activeClue.answerRevealed} onclick={showAnswer}>
+                Show answer
+              </button>
+              <button type="button" onclick={noContest}>No contest</button>
             </div>
-          </section>
-        </div>
-
-        {#if sessionView.buzzWinnerPlayerId !== undefined}
-          <p class="panel__buzzed-player">
-            <strong>Buzzed player:</strong> {buzzWinnerDisplayName ?? "Unknown player"}
-          </p>
-          <div class="judge-actions">
-            <button type="button" disabled={sessionView.activeClue.answerRevealed} onclick={showAnswer}>
-              Show answer
-            </button>
-            <button type="button" onclick={() => judgeAnswer(true)}>Mark correct</button>
-            <button type="button" onclick={() => judgeAnswer(false)}>Mark incorrect</button>
-            <button type="button" onclick={rebound}>Rebound</button>
-            <button type="button" onclick={noContest}>No contest</button>
-          </div>
-        {:else}
-          <p>Waiting for a player to buzz in.</p>
-          <div class="judge-actions">
-            <button type="button" disabled={sessionView.activeClue.answerRevealed} onclick={showAnswer}>
-              Show answer
-            </button>
-            <button type="button" onclick={noContest}>No contest</button>
-          </div>
-        {/if}
-      </section>
+          {/if}
+        {/snippet}
+      </ClueSplitScreen>
     </div>
   {:else if hostScreenStep === "end" && sessionView !== undefined}
     <EndScreen players={sessionView.players} title={sessionView.title} />
@@ -689,6 +650,8 @@
   .screen__live--gameplay {
     gap: 0;
     align-content: start;
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 
   .panel {
@@ -720,74 +683,6 @@
     color: #111827;
     font-size: 1.1rem;
     font-weight: 700;
-  }
-
-  .active-clue {
-    --gameplay-tile-font-size: clamp(1.9rem, 3vw, 2.6rem);
-    display: grid;
-    gap: 1rem;
-    border: 2px solid #0f2d52;
-    padding: 1.25rem 1.5rem;
-    background: #d7c898;
-    color: #f8fafc;
-  }
-
-  .active-clue__title {
-    margin: 0;
-    font-size: var(--gameplay-tile-font-size);
-    line-height: 1.1;
-  }
-
-  .active-clue__split {
-    display: grid;
-    gap: 1.5rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .active-clue__panel {
-    min-width: 0;
-    display: grid;
-    align-content: start;
-    gap: 1rem;
-  }
-
-  .active-clue__panel-title {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.15;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .active-clue__text {
-    margin: 0;
-    min-height: 6rem;
-    font-size: var(--gameplay-tile-font-size);
-    line-height: 1.15;
-  }
-
-  .active-clue__media-slot {
-    min-height: 18rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .active-clue__image {
-    max-width: min(100%, 42rem);
-    max-height: 22rem;
-    border-radius: 0;
-  }
-
-  .active-clue__media {
-    max-width: min(100%, 42rem);
-    max-height: 22rem;
-  }
-
-  @media (max-width: 900px) {
-    .active-clue__split {
-      grid-template-columns: 1fr;
-    }
   }
 
   .screen__actions--inline {

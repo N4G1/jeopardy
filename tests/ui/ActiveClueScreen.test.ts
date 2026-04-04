@@ -113,8 +113,7 @@ describe("ActiveClueScreen", () => {
       },
     });
 
-    expect(container.querySelector(".clue-screen__answer-content")).toBeTruthy();
-    expect(container.querySelector(".hidden-answer")).toBeTruthy();
+    expect(container.querySelectorAll(".clue-shared--hidden").length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("Shakespeare")).toBeNull();
 
     await rerender({
@@ -131,7 +130,7 @@ describe("ActiveClueScreen", () => {
       onBuzz: vi.fn(),
     });
 
-    expect(container.querySelector(".hidden-answer")).toBeNull();
+    expect(container.querySelectorAll(".clue-shared--hidden")).toHaveLength(0);
     expect(screen.getByText("Shakespeare")).toBeTruthy();
   });
 
@@ -164,5 +163,29 @@ describe("ActiveClueScreen", () => {
 
     expect(container.querySelector("audio")).toBeTruthy();
     expect(container.querySelector("video")).toBeTruthy();
+  });
+
+  test("uses full viewport height for the clue layout", () => {
+    const { container } = render(ActiveClueScreen, {
+      props: {
+        clue: {
+          id: "clue-1",
+          columnTitle: "Literature",
+          prompt: "Who wrote Hamlet?",
+          value: 300,
+          attemptedPlayerIds: [],
+          answerRevealed: false,
+        },
+        canBuzz: true,
+        onBuzz: vi.fn(),
+      },
+    });
+
+    const root = container.querySelector(".clue-shared");
+    const inlineStyle = root?.getAttribute("style") ?? "";
+    expect(inlineStyle).toContain("height: 100vh");
+    expect(inlineStyle).toContain("height: 100dvh");
+    expect(inlineStyle).toContain("overflow: hidden");
+    expect(inlineStyle).not.toContain("min-height");
   });
 });

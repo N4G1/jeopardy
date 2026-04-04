@@ -393,10 +393,7 @@
                               draggable="false"
                             />
                           {:else if clue.questionMedia.kind === "audio"}
-                            <audio
-                              class="board-editor-grid__clue-preview-media"
-                              src={clue.questionMedia.url}
-                            ></audio>
+                            <span class="board-editor-grid__clue-audio-badge" aria-label="Audio attached">🔊 Audio</span>
                           {:else if clue.questionMedia.kind === "video"}
                             <!-- svelte-ignore a11y_media_has_caption -->
                             <video
@@ -420,10 +417,7 @@
                               draggable="false"
                             />
                           {:else if clue.answerMedia.kind === "audio"}
-                            <audio
-                              class="board-editor-grid__clue-preview-media"
-                              src={clue.answerMedia.url}
-                            ></audio>
+                            <span class="board-editor-grid__clue-audio-badge" aria-label="Audio attached">🔊 Audio</span>
                           {:else if clue.answerMedia.kind === "video"}
                             <!-- svelte-ignore a11y_media_has_caption -->
                             <video
@@ -694,6 +688,14 @@
   .board-editor-grid__clue-preview-media {
     max-width: 100%;
     max-height: 3rem;
+  }
+
+  .board-editor-grid__clue-audio-badge {
+    font-size: clamp(0.6rem, 1.1vw, 0.85rem);
+    font-weight: 700;
+    color: #efff54;
+    text-align: center;
+    line-height: 1.2;
   }
 
   .board-editor-grid__resize {
