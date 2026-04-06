@@ -1,5 +1,6 @@
 type BuzzAudio = {
   currentTime: number;
+  volume: number;
   play: () => Promise<void>;
 };
 
@@ -18,6 +19,8 @@ const defaultBuzzSoundUrl = resolveBuzzSoundUrl();
 
 function createBuzzSoundPlayer({
   audioUrl = defaultBuzzSoundUrl,
+  volume = 0.5,
+  getVolume,
   createAudio = (src) => {
     const audio = new Audio(src);
     audio.preload = "auto";
@@ -25,6 +28,8 @@ function createBuzzSoundPlayer({
   },
 }: {
   audioUrl?: string;
+  volume?: number;
+  getVolume?: () => number;
   createAudio?: CreateBuzzAudio;
 } = {}): BuzzSoundPlayer {
   let audio: BuzzAudio | undefined;
@@ -32,6 +37,7 @@ function createBuzzSoundPlayer({
   return {
     async play(): Promise<void> {
       const resolvedAudio = (audio ??= createAudio(audioUrl));
+      resolvedAudio.volume = getVolume?.() ?? volume;
       resolvedAudio.currentTime = 0;
 
       try {

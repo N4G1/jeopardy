@@ -12,17 +12,20 @@
   import { getPlayerBuzzState } from "./playerBuzzState";
   import { getPlayerScreenStep, shouldShowPlayerScoreStrip } from "./playerScreenState";
   import ActiveClueScreen from "./ActiveClueScreen.svelte";
+  import BuzzVolumeControl from "../shared/BuzzVolumeControl.svelte";
   import EndScreen from "../shared/EndScreen.svelte";
   import GameBoard from "../shared/GameBoard.svelte";
   import Scoreboard from "../shared/Scoreboard.svelte";
   import TimedToast from "../shared/TimedToast.svelte";
   import { createBuzzSoundPlayer } from "../shared/buzzSound";
+  import { defaultBuzzVolume, loadBuzzVolume, saveBuzzVolume } from "../shared/buzzVolume";
   import { createTimedToastManager } from "../shared/timedToastManager";
 
   let connectionStatus = $state<"connecting" | "connected" | "disconnected">("connecting");
   let toastMessage = $state("");
   let toastTone = $state<"info" | "success" | "error">("error");
   let sessionView = $state<GameSessionView | undefined>(undefined);
+  let buzzVolume = $state(defaultBuzzVolume);
 
   const playerName = getLocationSearchParam("name");
   const joinCode = getLocationSearchParam("code");
@@ -34,8 +37,15 @@
   let realtimeClient:
     | ReturnType<typeof createRealtimeClient>
     | undefined;
+  if (typeof window !== "undefined") {
+    buzzVolume = loadBuzzVolume(window.localStorage);
+  }
   const buzzSoundPlayer =
-    typeof window === "undefined" ? undefined : createBuzzSoundPlayer();
+    typeof window === "undefined"
+      ? undefined
+      : createBuzzSoundPlayer({
+          getVolume: () => buzzVolume,
+        });
   const toastManager = createTimedToastManager({
     setMessage: (next) => {
       toastMessage = next;
@@ -130,6 +140,15 @@
     });
   }
 
+  function handleBuzzVolumeChange(nextVolume: number): void {
+    if (typeof window === "undefined") {
+      buzzVolume = nextVolume;
+      return;
+    }
+
+    buzzVolume = saveBuzzVolume(window.localStorage, nextVolume);
+  }
+
   onDestroy(() => {
     realtimeClient?.disconnect();
     toastManager.destroy();
@@ -152,6 +171,7 @@
       toastManager.clear();
     }}
   />
+  <BuzzVolumeControl value={buzzVolume} onChange={handleBuzzVolumeChange} />
   {#if playerScreenStep === "waiting" || playerScreenStep === "lobby"}
     <header class="screen__header">
       <div>

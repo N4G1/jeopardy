@@ -28,6 +28,7 @@
     saveNamedBoard,
     type SavedBoardSummary,
   } from "src/features/setup/boardStorage";
+  import BuzzVolumeControl from "src/features/shared/BuzzVolumeControl.svelte";
   import { copyTextToClipboard } from "src/features/shared/clipboard";
   import BoardEditor from "src/features/setup/BoardEditor.svelte";
   import ClueSplitScreen from "src/features/shared/ClueSplitScreen.svelte";
@@ -36,6 +37,7 @@
   import Scoreboard from "src/features/shared/Scoreboard.svelte";
   import TimedToast from "src/features/shared/TimedToast.svelte";
   import { createBuzzSoundPlayer } from "src/features/shared/buzzSound";
+  import { defaultBuzzVolume, loadBuzzVolume, saveBuzzVolume } from "src/features/shared/buzzVolume";
   import { createTimedToastManager } from "src/features/shared/timedToastManager";
   import { canEnterGameBoard, getHostScreenStep } from "./hostScreenState";
 
@@ -47,8 +49,16 @@
   let isStorageReady = $state(false);
   let savedBoards = $state<SavedBoardSummary[]>([]);
   let hostingMode = $state<HostingMode>("lan");
+  let buzzVolume = $state(defaultBuzzVolume);
+  if (typeof window !== "undefined") {
+    buzzVolume = loadBuzzVolume(window.localStorage);
+  }
   const buzzSoundPlayer =
-    typeof window === "undefined" ? undefined : createBuzzSoundPlayer();
+    typeof window === "undefined"
+      ? undefined
+      : createBuzzSoundPlayer({
+          getVolume: () => buzzVolume,
+        });
   const toastManager = createTimedToastManager({
     setMessage: (next) => {
       toastMessage = next;
@@ -100,6 +110,15 @@
     tone: "info" | "success" | "error" = "info",
   ): void {
     toastManager.show(message, tone);
+  }
+
+  function handleBuzzVolumeChange(nextVolume: number): void {
+    if (typeof window === "undefined") {
+      buzzVolume = nextVolume;
+      return;
+    }
+
+    buzzVolume = saveBuzzVolume(window.localStorage, nextVolume);
   }
 
   function fillSampleBoard(): void {
@@ -377,6 +396,7 @@
   class="screen"
 >
   <TimedToast message={toastMessage} tone={toastTone} onDismiss={dismissToast} />
+  <BuzzVolumeControl value={buzzVolume} onChange={handleBuzzVolumeChange} />
 
   {#if hostScreenStep === "editor"}
     <div class="host-editor">
