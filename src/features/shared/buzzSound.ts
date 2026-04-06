@@ -9,7 +9,12 @@ type BuzzSoundPlayer = {
   play: () => Promise<void>;
 };
 
-const defaultBuzzSoundUrl = "/sounds/buzzer.mp3";
+function resolveBuzzSoundUrl(baseUrl = import.meta.env.BASE_URL): string {
+  const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  return `${normalizedBaseUrl}sounds/buzzer.mp3`;
+}
+
+const defaultBuzzSoundUrl = resolveBuzzSoundUrl();
 
 function createBuzzSoundPlayer({
   audioUrl = defaultBuzzSoundUrl,
@@ -38,5 +43,5 @@ function createBuzzSoundPlayer({
   };
 }
 
-export { createBuzzSoundPlayer, defaultBuzzSoundUrl };
+export { createBuzzSoundPlayer, defaultBuzzSoundUrl, resolveBuzzSoundUrl };
 export type { BuzzAudio, BuzzSoundPlayer, CreateBuzzAudio };

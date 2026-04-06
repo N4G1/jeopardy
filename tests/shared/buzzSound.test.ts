@@ -1,8 +1,13 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { createBuzzSoundPlayer } from "src/features/shared/buzzSound";
+import { createBuzzSoundPlayer, resolveBuzzSoundUrl } from "src/features/shared/buzzSound";
 
 describe("createBuzzSoundPlayer", () => {
+  test("resolves the default buzzer path under a configured base url", () => {
+    expect(resolveBuzzSoundUrl("/")).toBe("/sounds/buzzer.mp3");
+    expect(resolveBuzzSoundUrl("/jeopardy/")).toBe("/jeopardy/sounds/buzzer.mp3");
+  });
+
   test("reuses the same audio instance and restarts playback on each buzz", async () => {
     const play = vi.fn(async () => undefined);
     const audio = {
