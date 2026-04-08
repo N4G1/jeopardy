@@ -87,7 +87,7 @@
     gap: 1rem;
     border: 2px solid #0f2d52;
     padding: 1.25rem 1.5rem;
-    background: #d7c898;
+    background: #0b2a4a;
     color: #f8fafc;
     box-sizing: border-box;
   }
